@@ -11,7 +11,9 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 
 const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN ?? ''
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
 function toolLog(method: string, message: string, extra?: Record<string, unknown>) {
   const ts = new Date().toISOString()
