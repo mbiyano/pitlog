@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  pitlog-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # Required — set in .env or override here
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_REALTIME_MODEL: ${OPENAI_REALTIME_MODEL:-gpt-4o-realtime-preview-2024-12-17}
+      OPENAI_REALTIME_VOICE: ${OPENAI_REALTIME_VOICE:-shimmer}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      USE_MOCK_MCP: ${USE_MOCK_MCP:-true}
+      MCP_SERVER_BASE_URL: ${MCP_SERVER_BASE_URL:-}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      GATEWAY_BEARER_TOKEN: ${GATEWAY_BEARER_TOKEN:-}
+      SESSION_TTL_MS: ${SESSION_TTL_MS:-1800000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8080/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
