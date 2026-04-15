@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: pitlog-gateway
+    runtime: docker
+    dockerfilePath: ./voice-gateway/Dockerfile
+    dockerContext: ./voice-gateway
+    region: oregon
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: OPENAI_API_KEY
+        sync: false # set manually in Render dashboard
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # set to your Vercel domain, e.g. https://pitlog.vercel.app
+      - key: GATEWAY_BEARER_TOKEN
+        sync: false # optional — set in dashboard if you want auth
+      - key: USE_MOCK_MCP
+        value: "true"
+      - key: MCP_SERVER_BASE_URL
+        sync: false
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: SESSION_TTL_MS
+        value: "1800000"
+      - key: RATE_LIMIT_SESSION_PER_MINUTE
+        value: "10"
+      - key: MAX_TOOL_CALLS_PER_TURN
+        value: "5"
+      - key: JOURNAL_MAX_EVENTS
+        value: "200"
