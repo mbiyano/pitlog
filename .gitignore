@@ -39,5 +39,8 @@ next-env.d.ts
 .pnp.js
 .yarn/install-state.gz
 
-# Claude
-.claude/
+# Claude local state; keep shared agent context versioned.
+.claude/*
+!.claude/README.md
+!.claude/context/
+!.claude/context/**

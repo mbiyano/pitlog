@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
-import { Car, Plus } from 'lucide-react'
+import { Car, ChevronRight, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { VehicleSearch } from './vehicle-search'
 
@@ -23,7 +23,7 @@ export default async function VehiclesPage({
         title="Vehículos"
         description={`${vehicles.length} vehículo${vehicles.length !== 1 ? 's' : ''}`}
         actions={
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="w-full sm:w-auto">
             <Link href="/vehiculos/nuevo">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo vehículo
@@ -55,33 +55,34 @@ export default async function VehiclesPage({
           }
         />
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {vehicles.map((vehicle) => {
             const customer = vehicle.customers as { id: string; full_name: string; phone: string | null } | null
             return (
               <Link
                 key={vehicle.id}
                 href={`/vehiculos/${vehicle.id}`}
-                className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent"
+                className="interactive-row flex min-w-0 items-center gap-3 p-4"
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Car className="h-6 w-6 text-primary" />
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Car className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
-                    <p className="font-mono text-lg font-bold">{vehicle.plate}</p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-lg font-bold tracking-wide">{vehicle.plate}</p>
+                    <p className="truncate text-sm text-muted-foreground">
                       {vehicle.make} {vehicle.model} {vehicle.year}
                     </p>
                     {customer && (
-                      <p className="text-xs text-muted-foreground">{customer.full_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{customer.full_name}</p>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge variant="secondary">
                     {new Intl.NumberFormat('es-AR').format(vehicle.mileage_current)} km
                   </Badge>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 </div>
               </Link>
             )

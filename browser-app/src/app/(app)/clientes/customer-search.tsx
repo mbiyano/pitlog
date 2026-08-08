@@ -1,29 +1,47 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function CustomerSearch({ initialQuery }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery ?? '')
   const router = useRouter()
 
-  function handleSearch(value: string) {
-    setQuery(value)
-    const params = value ? `?q=${encodeURIComponent(value)}` : ''
-    router.replace(`/clientes${params}`)
-  }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const normalized = query.trim()
+      const params = normalized ? `?q=${encodeURIComponent(normalized)}` : ''
+      router.replace(`/clientes${params}`, { scroll: false })
+    }, 300)
+    return () => window.clearTimeout(timeout)
+  }, [query, router])
 
   return (
-    <div className="relative">
+    <div className="relative max-w-2xl" role="search">
+      <label htmlFor="customer-search" className="sr-only">Buscar clientes</label>
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
+        id="customer-search"
         placeholder="Buscar por nombre, teléfono o email..."
         value={query}
-        onChange={(e) => handleSearch(e.target.value)}
-        className="pl-10"
+        onChange={(e) => setQuery(e.target.value)}
+        className="pl-10 pr-11"
       />
+      {query && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 top-0"
+          onClick={() => setQuery('')}
+          aria-label="Limpiar búsqueda"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      )}
     </div>
   )
 }

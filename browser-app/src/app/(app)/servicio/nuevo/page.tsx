@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -25,18 +25,26 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
-import { Search, Plus, Trash2, Car, Wrench } from 'lucide-react'
+import { Field, FieldError, FieldHint } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { format } from 'date-fns'
+import { AlertCircle, ArrowLeft, Loader2, Search, Plus, Trash2, Car } from 'lucide-react'
+import Link from 'next/link'
 
 export default function NewServicePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Plate search state
   const [plateQuery, setPlateQuery] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [plateResults, setPlateResults] = useState<any[]>([])
+  const [searchingPlate, setSearchingPlate] = useState(false)
+  const [plateSearchError, setPlateSearchError] = useState(false)
+  const [hasSearchedPlate, setHasSearchedPlate] = useState(false)
+  const plateSearchSequence = useRef(0)
   const [selectedVehicle, setSelectedVehicle] = useState<{
     id: string
     plate: string
@@ -61,7 +69,7 @@ export default function NewServicePage() {
     defaultValues: {
       vehicle_id: '',
       customer_id: '',
-      visit_date: new Date().toISOString().split('T')[0],
+      visit_date: format(new Date(), 'yyyy-MM-dd'),
       mileage: null,
       intake_notes: '',
       summary: '',
@@ -101,16 +109,41 @@ export default function NewServicePage() {
     }
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Search plates
-  const handlePlateSearch = useCallback(async (value: string) => {
+  useEffect(() => {
+    const value = plateQuery.trim()
+    if (value.length < 2) return
+
+    const sequence = ++plateSearchSequence.current
+    const timeout = window.setTimeout(async () => {
+      setSearchingPlate(true)
+      setPlateSearchError(false)
+      setHasSearchedPlate(false)
+      try {
+        const data = await searchVehicleByPlate(supabase, value)
+        if (sequence !== plateSearchSequence.current) return
+        setPlateResults(data)
+        setHasSearchedPlate(true)
+      } catch {
+        if (sequence !== plateSearchSequence.current) return
+        setPlateResults([])
+        setPlateSearchError(true)
+      } finally {
+        if (sequence === plateSearchSequence.current) setSearchingPlate(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [plateQuery, supabase])
+
+  function updatePlateQuery(value: string) {
     setPlateQuery(value)
-    if (value.length < 2) {
+    if (value.trim().length < 2) {
       setPlateResults([])
-      return
+      setSearchingPlate(false)
+      setPlateSearchError(false)
+      setHasSearchedPlate(false)
     }
-    const data = await searchVehicleByPlate(supabase, value)
-    setPlateResults(data)
-  }, [supabase])
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function selectVehicle(v: any) {
@@ -124,7 +157,7 @@ export default function NewServicePage() {
     })
     form.setValue('vehicle_id', v.id)
     form.setValue('customer_id', v.customer_id)
-    setPlateQuery('')
+    updatePlateQuery('')
     setPlateResults([])
   }
 
@@ -166,7 +199,7 @@ export default function NewServicePage() {
   async function onSubmit(data: ServiceVisitFormData) {
     setSaving(true)
     try {
-      const visit = await createVisitWithItems(supabase, data)
+      await createVisitWithItems(supabase, data)
       toast({ title: 'Servicio registrado' })
       router.push(`/vehiculos/${data.vehicle_id}`)
     } catch {
@@ -186,8 +219,17 @@ export default function NewServicePage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Servicios"
         title="Nuevo servicio"
-        description="Registrar una nueva visita al taller"
+        description="Seleccioná el vehículo y registrá los trabajos realizados durante la visita."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/dashboard">
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              Volver
+            </Link>
+          </Button>
+        }
       />
 
       {/* Step 1: Vehicle selection */}
@@ -195,28 +237,42 @@ export default function NewServicePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Car className="h-5 w-5" />
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">1</span>
               Seleccionar vehículo
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative">
+            <Field className="relative">
+              <Label htmlFor="service-plate-search">Patente, marca o modelo</Label>
+              <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por patente..."
+                id="service-plate-search"
+                placeholder="Ej: ABC 123"
                 value={plateQuery}
-                onChange={(e) => handlePlateSearch(e.target.value)}
+                onChange={(e) => updatePlateQuery(e.target.value)}
                 className="pl-10 font-mono text-lg uppercase"
                 autoFocus
               />
-            </div>
+                {searchingPlate && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />}
+              </div>
+              <FieldHint>Escribí al menos dos caracteres. La búsqueda espera mientras terminás de escribir.</FieldHint>
+            </Field>
+
+            {plateSearchError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>No pudimos buscar vehículos. Intentá nuevamente.</AlertDescription>
+              </Alert>
+            )}
 
             {plateResults.length > 0 && (
-              <div className="rounded-lg border">
+              <div className="overflow-hidden rounded-xl border">
                 {plateResults.map((v) => (
                   <button
                     key={v.id}
-                    className="flex w-full items-center gap-3 border-b p-4 text-left last:border-b-0 hover:bg-accent"
+                    type="button"
+                    className="flex min-h-14 w-full items-center gap-3 border-b p-4 text-left transition-colors last:border-b-0 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                     onClick={() => selectVehicle(v)}
                   >
                     <Car className="h-5 w-5 text-muted-foreground" />
@@ -234,10 +290,11 @@ export default function NewServicePage() {
               </div>
             )}
 
-            {plateQuery.length >= 2 && plateResults.length === 0 && (
-              <div className="rounded-lg border border-dashed p-6 text-center">
+            {hasSearchedPlate && !plateSearchError && plateQuery.length >= 2 && plateResults.length === 0 && (
+              <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center">
                 <p className="text-sm text-muted-foreground">No se encontró ningún vehículo</p>
                 <Button
+                  type="button"
                   variant="outline"
                   className="mt-3"
                   onClick={() => {
@@ -259,18 +316,19 @@ export default function NewServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <Label>Patente</Label>
+                    <Field>
+                      <Label htmlFor="new-vehicle-plate">Patente</Label>
                       <Input
+                        id="new-vehicle-plate"
                         value={newPlate}
                         onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
                         className="font-mono uppercase"
                       />
-                    </div>
-                    <div>
-                      <Label>Cliente</Label>
+                    </Field>
+                    <Field>
+                      <Label htmlFor="new-vehicle-customer">Cliente</Label>
                       <Select value={newCustomerId} onValueChange={setNewCustomerId}>
-                        <SelectTrigger>
+                        <SelectTrigger id="new-vehicle-customer">
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
@@ -281,31 +339,32 @@ export default function NewServicePage() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <Label>Marca</Label>
-                      <Input value={newMake} onChange={(e) => setNewMake(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Modelo</Label>
-                      <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Año</Label>
+                    <Field>
+                      <Label htmlFor="new-vehicle-make">Marca</Label>
+                      <Input id="new-vehicle-make" value={newMake} onChange={(e) => setNewMake(e.target.value)} />
+                    </Field>
+                    <Field>
+                      <Label htmlFor="new-vehicle-model">Modelo</Label>
+                      <Input id="new-vehicle-model" value={newModel} onChange={(e) => setNewModel(e.target.value)} />
+                    </Field>
+                    <Field>
+                      <Label htmlFor="new-vehicle-year">Año</Label>
                       <Input
+                        id="new-vehicle-year"
                         type="number"
                         value={newYear}
                         onChange={(e) => setNewYear(e.target.value)}
                       />
-                    </div>
+                    </Field>
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleInlineCreate} disabled={!newPlate || !newCustomerId}>
+                    <Button type="button" onClick={handleInlineCreate} disabled={!newPlate || !newCustomerId}>
                       Crear y seleccionar
                     </Button>
-                    <Button variant="ghost" onClick={() => setShowInlineCreate(false)}>
+                    <Button type="button" variant="ghost" onClick={() => setShowInlineCreate(false)}>
                       Cancelar
                     </Button>
                   </div>
@@ -318,10 +377,10 @@ export default function NewServicePage() {
         <>
           {/* Selected vehicle summary */}
           <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <Car className="h-6 w-6 text-primary" />
-                <div>
+                <div className="min-w-0">
                   <span className="font-mono text-lg font-bold">{selectedVehicle.plate}</span>
                   <span className="ml-2 text-sm text-muted-foreground">
                     {selectedVehicle.make} {selectedVehicle.model}
@@ -330,8 +389,10 @@ export default function NewServicePage() {
                 </div>
               </div>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setSelectedVehicle(null)
                   form.setValue('vehicle_id', '')
@@ -345,33 +406,42 @@ export default function NewServicePage() {
 
           {/* Step 2: Visit details form */}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Datos de la visita</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Fecha</Label>
-                    <Input type="date" {...form.register('visit_date')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Kilometraje actual</Label>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
+                Datos de la visita
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                    <Label htmlFor="visit-date">Fecha</Label>
+                    <Input id="visit-date" type="date" {...form.register('visit_date')} />
+                </Field>
+                <Field>
+                    <Label htmlFor="visit-mileage">Kilometraje actual</Label>
                     <Input
+                      id="visit-mileage"
                       type="number"
+                      inputMode="numeric"
+                      min={0}
                       placeholder="Ej: 45000"
+                      aria-invalid={Boolean(form.formState.errors.mileage)}
                       {...form.register('mileage')}
                     />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notas de ingreso</Label>
+                    <FieldError>{form.formState.errors.mileage?.message}</FieldError>
+                </Field>
+              </div>
+              <Field>
+                  <Label htmlFor="intake-notes">Notas de ingreso</Label>
                   <Textarea
+                    id="intake-notes"
                     placeholder="Motivo de la visita, síntomas, etc."
                     rows={3}
                     {...form.register('intake_notes')}
                   />
-                </div>
+              </Field>
               </CardContent>
             </Card>
 
@@ -380,7 +450,7 @@ export default function NewServicePage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Wrench className="h-5 w-5" />
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
                     Trabajos realizados
                   </CardTitle>
                   <Button
@@ -405,7 +475,7 @@ export default function NewServicePage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-3 rounded-lg border p-4">
+                  <div key={field.id} className="space-y-4 rounded-xl border bg-muted/20 p-4 sm:p-5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-muted-foreground">
                         Trabajo #{index + 1}
@@ -417,20 +487,21 @@ export default function NewServicePage() {
                           size="sm"
                           onClick={() => remove(index)}
                           className="text-destructive"
+                          aria-label={`Eliminar trabajo ${index + 1}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       )}
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label>Categoría</Label>
+                      <Field>
+                        <Label htmlFor={`item-${index}-category`}>Categoría</Label>
                         <Select
                           value={form.watch(`items.${index}.category`)}
                           onValueChange={(val) => form.setValue(`items.${index}.category`, val)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger id={`item-${index}-category`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -441,56 +512,57 @@ export default function NewServicePage() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Título *</Label>
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`item-${index}-title`}>Título *</Label>
                         <Input
+                          id={`item-${index}-title`}
                           placeholder="Ej: Cambio de aceite 10W40"
+                          aria-invalid={Boolean(form.formState.errors.items?.[index]?.title)}
                           {...form.register(`items.${index}.title`)}
                         />
-                        {form.formState.errors.items?.[index]?.title && (
-                          <p className="text-xs text-destructive">
-                            {form.formState.errors.items[index]?.title?.message}
-                          </p>
-                        )}
-                      </div>
+                        <FieldError>{form.formState.errors.items?.[index]?.title?.message}</FieldError>
+                      </Field>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label>Descripción</Label>
+                    <Field>
+                      <Label htmlFor={`item-${index}-description`}>Descripción</Label>
                       <Textarea
+                        id={`item-${index}-description`}
                         placeholder="Detalles del trabajo..."
                         rows={2}
                         {...form.register(`items.${index}.description`)}
                       />
-                    </div>
+                    </Field>
 
                     <Separator />
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label>Próximo servicio (fecha)</Label>
+                      <Field>
+                        <Label htmlFor={`item-${index}-date`}>Próximo servicio (fecha)</Label>
                         <Input
+                          id={`item-${index}-date`}
                           type="date"
                           {...form.register(`items.${index}.next_service_date`)}
                         />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Próximo servicio (km)</Label>
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`item-${index}-mileage`}>Próximo servicio (km)</Label>
                         <Input
+                          id={`item-${index}-mileage`}
                           type="number"
+                          inputMode="numeric"
+                          min={0}
                           placeholder="Ej: 55000"
                           {...form.register(`items.${index}.next_service_mileage`)}
                         />
-                      </div>
+                      </Field>
                     </div>
                   </div>
                 ))}
 
                 {form.formState.errors.items?.root && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.items.root.message}
-                  </p>
+                  <FieldError>{form.formState.errors.items.root.message}</FieldError>
                 )}
               </CardContent>
             </Card>
@@ -498,16 +570,19 @@ export default function NewServicePage() {
             {/* Summary */}
             <Card>
               <CardContent className="space-y-4 pt-6">
-                <div className="space-y-2">
-                  <Label>Resumen del servicio</Label>
+                <Field>
+                  <Label htmlFor="service-summary">Resumen del servicio</Label>
                   <Textarea
+                    id="service-summary"
                     placeholder="Resumen general (opcional)"
                     rows={2}
                     {...form.register('summary')}
                   />
-                </div>
-                <Button type="submit" size="lg" className="w-full" disabled={saving}>
-                  {saving ? 'Guardando...' : 'Registrar servicio'}
+                  <FieldHint>Una síntesis breve facilita futuras consultas del historial.</FieldHint>
+                </Field>
+                <Button type="submit" size="lg" className="w-full" disabled={saving} aria-busy={saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {saving ? 'Guardando…' : 'Registrar servicio'}
                 </Button>
               </CardContent>
             </Card>

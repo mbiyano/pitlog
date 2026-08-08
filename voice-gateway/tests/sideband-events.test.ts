@@ -46,6 +46,26 @@ describe('Tool dispatch via dispatchTool', () => {
     const visita = result.result as { estado: string };
     expect(visita.estado).toBe('abierta');
   });
+
+  it('rejects a write result that was not verified after persistence', async () => {
+    const adapter = new MockMcpAdapter();
+    vi.spyOn(adapter, 'crearAuto').mockResolvedValue({
+      id: 'auto-unverified',
+      patente: 'ZZZ999',
+      marca: 'Ford',
+      modelo: 'Ka',
+      anio: 2010,
+    });
+
+    const result = await dispatchTool(
+      'crear_auto',
+      { patente: 'ZZZ999', marca: 'Ford', modelo: 'Ka', anio: 2010, clienteId: 'cliente-1' },
+      adapter,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('verificar la persistencia');
+  });
 });
 
 describe('Confirmation + guardrail interaction', () => {

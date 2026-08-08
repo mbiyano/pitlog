@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { SessionManager } from '../../realtime/session-manager.js';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = { version: '0.1.0' };
 
 export function registerHealthRoutes(

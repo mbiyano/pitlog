@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { GuardrailsPolicy } from '../src/policies/guardrails.js';
 
 function makeGuardrails(maxCalls = 5): GuardrailsPolicy {

@@ -3,7 +3,7 @@ import { getVehicleById } from '@/lib/services/vehicles'
 import { getVisitsByVehicle } from '@/lib/services/visits'
 import { getRemindersByVehicle } from '@/lib/services/reminders'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { PageHeader } from '@/components/layout/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,14 +12,11 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { EmptyState } from '@/components/shared/empty-state'
 import {
-  Car,
   Wrench,
-  Calendar,
   Gauge,
   Bell,
   User,
   Phone,
-  Clock,
   ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -62,6 +59,7 @@ export default async function VehicleDetailPage({
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Vehículo"
         title={vehicle.plate}
         description={[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ')}
         actions={
@@ -111,7 +109,7 @@ export default async function VehicleDetailPage({
             {customer && (
               <Link
                 href={`/clientes/${customer.id}`}
-                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent"
+                className="interactive-row flex items-center gap-3 p-3"
               >
                 <User className="h-5 w-5 text-muted-foreground" />
                 <div className="flex-1">
@@ -134,7 +132,7 @@ export default async function VehicleDetailPage({
                 <span className="text-sm text-muted-foreground">Último servicio</span>
                 <span className="text-sm">
                   {lastVisit
-                    ? format(new Date(lastVisit.visit_date), 'dd/MM/yyyy')
+                    ? format(parseISO(lastVisit.visit_date), 'dd/MM/yyyy')
                     : '—'}
                 </span>
               </div>
@@ -142,7 +140,7 @@ export default async function VehicleDetailPage({
                 <span className="text-sm text-muted-foreground">Último cambio aceite</span>
                 <span className="text-sm">
                   {lastOilChange
-                    ? format(new Date(lastOilChange.created_at), 'dd/MM/yyyy')
+                    ? format(parseISO(lastOilChange.created_at), 'dd/MM/yyyy')
                     : '—'}
                 </span>
               </div>
@@ -158,10 +156,10 @@ export default async function VehicleDetailPage({
         <div className="space-y-6 lg:col-span-2">
           {/* Reminders */}
           {pendingReminders.length > 0 && (
-            <Card className="border-yellow-500/50">
+            <Card className="border-warning/40">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Bell className="h-4 w-4 text-yellow-500" />
+                  <Bell className="h-4 w-4 text-warning" />
                   Recordatorios pendientes ({pendingReminders.length})
                 </CardTitle>
               </CardHeader>
@@ -170,12 +168,12 @@ export default async function VehicleDetailPage({
                   {pendingReminders.map((r) => (
                     <div
                       key={r.id}
-                      className="flex items-center justify-between rounded-lg bg-yellow-500/10 p-3"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning/10 p-3"
                     >
                       <span className="text-sm">{r.reason}</span>
                       {r.due_date && (
                         <Badge variant="warning">
-                          {format(new Date(r.due_date), 'dd MMM yyyy', { locale: es })}
+                          {format(parseISO(r.due_date), 'dd MMM yyyy', { locale: es })}
                         </Badge>
                       )}
                       {r.due_mileage && (
@@ -215,7 +213,7 @@ export default async function VehicleDetailPage({
                   {/* Timeline line */}
                   <div className="absolute left-[17px] top-2 h-[calc(100%-16px)] w-px bg-border" />
 
-                  {visits.map((visit, idx) => {
+                  {visits.map((visit) => {
                     const items = (visit.service_items ?? []) as Array<{
                       id: string
                       category: string
@@ -233,7 +231,7 @@ export default async function VehicleDetailPage({
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">
-                                {format(new Date(visit.visit_date), "d 'de' MMMM yyyy", { locale: es })}
+                                {format(parseISO(visit.visit_date), "d 'de' MMMM yyyy", { locale: es })}
                               </span>
                               {visit.mileage && (
                                 <Badge variant="secondary" className="text-xs">

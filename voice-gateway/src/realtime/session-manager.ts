@@ -5,7 +5,8 @@ import type { McpAdapter } from '../mcp/mcp-client.js';
 import type { ConversationStateStore, SessionState } from '../conversation/conversation-state-store.js';
 import { createInitialState } from '../conversation/conversation-state-store.js';
 import { RealtimeEventJournal } from './realtime-event-journal.js';
-import { SidebandController, SYSTEM_INSTRUCTIONS } from './sideband-controller.js';
+import { SidebandController } from './sideband-controller.js';
+import { SYSTEM_INSTRUCTIONS } from './workshop-assistant.js';
 import { createRealtimeSession, relaySdpOffer } from './openai-webrtc.js';
 
 export interface CreateSessionResult {
@@ -185,7 +186,7 @@ export class SessionManager {
       const now = Date.now();
       const ttl = this.config.SESSION_TTL_MS;
 
-      for (const [sessionId, session] of this.sessions) {
+      for (const sessionId of this.sessions.keys()) {
         const state = this.stateStore.get(sessionId);
         if (!state || now - state.lastActivityAt > ttl) {
           this.log.info({ sessionId }, 'TTL cleanup: ending stale session');

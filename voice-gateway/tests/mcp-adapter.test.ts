@@ -98,7 +98,6 @@ describe('MockMcpAdapter', () => {
       const trabajo = await adapter.agregarTrabajoAVisita({
         visitaId: visita.id,
         descripcion: 'Cambio de correa',
-        costo: 25000,
       });
       expect(trabajo.id).toBeTruthy();
       expect(trabajo.descripcion).toBe('Cambio de correa');

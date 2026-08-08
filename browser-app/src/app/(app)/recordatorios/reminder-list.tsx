@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateReminderStatus } from '@/lib/services/reminders'
-import { format, isPast, isToday, addDays } from 'date-fns'
+import { format, isPast, isToday, addDays, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,13 @@ const STATUS_FILTERS = [
   { value: 'all', label: 'Todos' },
 ]
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  contacted: 'Contactado',
+  snoozed: 'Pospuesto',
+  done: 'Completado',
+}
+
 export function ReminderList({
   initialReminders,
   currentFilter,
@@ -49,6 +56,7 @@ export function ReminderList({
   currentFilter: string
 }) {
   const [reminders, setReminders] = useState(initialReminders)
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
   const router = useRouter()
   const { toast } = useToast()
 
@@ -57,21 +65,28 @@ export function ReminderList({
     status: 'pending' | 'contacted' | 'done' | 'snoozed',
     dueDate?: string
   ) {
+    setUpdatingIds((current) => new Set(current).add(id))
     try {
       const supabase = createClient()
       await updateReminderStatus(supabase, id, status, dueDate)
       setReminders((prev) =>
         prev.map((r) => (r.id === id ? { ...r, status, ...(dueDate ? { due_date: dueDate } : {}) } : r))
       )
-      toast({ title: 'Recordatorio actualizado' })
+      toast({ title: 'Recordatorio actualizado', description: STATUS_LABELS[status] })
     } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+      toast({ title: 'No se pudo actualizar', description: 'Intentá nuevamente.', variant: 'destructive' })
+    } finally {
+      setUpdatingIds((current) => {
+        const next = new Set(current)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   function getDueBadge(dueDate: string | null) {
     if (!dueDate) return null
-    const date = new Date(dueDate)
+    const date = parseISO(dueDate)
     const isOverdue = isPast(date) && !isToday(date)
     const isDueToday = isToday(date)
 
@@ -85,13 +100,16 @@ export function ReminderList({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Filtrar recordatorios">
         {STATUS_FILTERS.map((f) => (
           <Button
             key={f.value}
             variant={currentFilter === f.value ? 'default' : 'outline'}
             size="sm"
             onClick={() => router.replace(`/recordatorios?status=${f.value}`)}
+            role="tab"
+            aria-selected={currentFilter === f.value}
+            className="shrink-0"
           >
             {f.label}
           </Button>
@@ -111,11 +129,11 @@ export function ReminderList({
             const customer = r.customers as { full_name: string; phone: string | null } | null
 
             return (
-              <Card key={r.id}>
+              <Card key={r.id} className="transition-colors hover:border-primary/25">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {getDueBadge(r.due_date)}
                         {r.due_mileage && (
                           <Badge variant="outline">
@@ -133,11 +151,11 @@ export function ReminderList({
                                   : 'default'
                           }
                         >
-                          {STATUS_FILTERS.find((f) => f.value === r.status)?.label ?? r.status}
+                          {STATUS_LABELS[r.status] ?? r.status}
                         </Badge>
                       </div>
                       <p className="font-medium">{r.reason}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4">
                         {vehicle && (
                           <Link
                             href={`/vehiculos/${r.vehicle_id}`}
@@ -158,12 +176,13 @@ export function ReminderList({
                     </div>
 
                     {r.status !== 'done' && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 sm:justify-end">
                         {r.status === 'pending' && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleStatusChange(r.id, 'contacted')}
+                            disabled={updatingIds.has(r.id)}
                           >
                             <Phone className="mr-1 h-3 w-3" />
                             Contactado
@@ -173,9 +192,10 @@ export function ReminderList({
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            const newDate = addDays(new Date(), 7).toISOString().split('T')[0]
+                            const newDate = format(addDays(new Date(), 7), 'yyyy-MM-dd')
                             handleStatusChange(r.id, 'snoozed', newDate)
                           }}
+                          disabled={updatingIds.has(r.id)}
                         >
                           <Clock className="mr-1 h-3 w-3" />
                           +7 días
@@ -183,6 +203,7 @@ export function ReminderList({
                         <Button
                           size="sm"
                           onClick={() => handleStatusChange(r.id, 'done')}
+                          disabled={updatingIds.has(r.id)}
                         >
                           <CheckCircle2 className="mr-1 h-3 w-3" />
                           Hecho

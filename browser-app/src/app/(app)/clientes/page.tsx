@@ -22,7 +22,7 @@ export default async function CustomersPage({
         title="Clientes"
         description={`${customers.length} cliente${customers.length !== 1 ? 's' : ''} registrado${customers.length !== 1 ? 's' : ''}`}
         actions={
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="w-full sm:w-auto">
             <Link href="/clientes/nuevo">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo cliente
@@ -54,14 +54,14 @@ export default async function CustomersPage({
           }
         />
       ) : (
-        <div className="divide-y rounded-lg border">
+        <div className="overflow-hidden rounded-xl border bg-card/80 shadow-sm">
           {customers.map((customer) => {
             const vehicles = (customer.vehicles ?? []) as Array<{ id: string; plate: string }>
             return (
               <Link
                 key={customer.id}
                 href={`/clientes/${customer.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent"
+                className="flex min-h-16 items-center gap-4 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/70 focus-visible:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{customer.full_name}</p>
@@ -85,7 +85,7 @@ export default async function CustomersPage({
                     {vehicles.map((v) => (
                       <span
                         key={v.id}
-                        className="rounded bg-secondary px-2 py-0.5 font-mono text-xs font-bold"
+                        className="rounded-md border bg-secondary px-2 py-1 font-mono text-xs font-bold tracking-wide"
                       >
                         {v.plate}
                       </span>

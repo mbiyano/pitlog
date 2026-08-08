@@ -1,8 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getReminders } from '@/lib/services/reminders'
 import { PageHeader } from '@/components/layout/page-header'
-import { EmptyState } from '@/components/shared/empty-state'
-import { Bell } from 'lucide-react'
 import { ReminderList } from './reminder-list'
 
 export default async function RemindersPage({
@@ -23,18 +21,10 @@ export default async function RemindersPage({
         description="Gestionar recordatorios de servicio"
       />
 
-      {reminders.length === 0 && !params.status ? (
-        <EmptyState
-          icon={Bell}
-          title="No hay recordatorios"
-          description="Los recordatorios se crean automáticamente al registrar servicios con próximo mantenimiento"
-        />
-      ) : (
-        <ReminderList
-          initialReminders={reminders}
-          currentFilter={params.status ?? 'pending'}
-        />
-      )}
+      <ReminderList
+        initialReminders={reminders}
+        currentFilter={params.status ?? 'pending'}
+      />
     </div>
   )
 }

@@ -37,8 +37,9 @@ export default async function CustomerDetailPage({
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Cliente"
         title={customer.full_name}
-        description="Detalle de cliente"
+        description={`${vehicles.length} vehículo${vehicles.length === 1 ? '' : 's'} asociado${vehicles.length === 1 ? '' : 's'}`}
         actions={
           <div className="flex items-center gap-2">
             <CustomerEditDialog customer={customer} />
@@ -62,7 +63,7 @@ export default async function CustomerDetailPage({
             {customer.phone ? (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${customer.phone}`} className="text-sm hover:underline">
+                <a href={`tel:${customer.phone}`} className="text-sm font-medium text-primary hover:underline">
                   {customer.phone}
                 </a>
               </div>
@@ -74,7 +75,7 @@ export default async function CustomerDetailPage({
             {customer.email ? (
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <a href={`mailto:${customer.email}`} className="text-sm hover:underline">
+                <a href={`mailto:${customer.email}`} className="break-all text-sm font-medium text-primary hover:underline">
                   {customer.email}
                 </a>
               </div>
@@ -118,7 +119,7 @@ export default async function CustomerDetailPage({
                   <Link
                     key={v.id}
                     href={`/vehiculos/${v.id}`}
-                    className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent"
+                    className="interactive-row flex items-center justify-between p-4"
                   >
                     <div className="flex items-center gap-3">
                       <Car className="h-5 w-5 text-muted-foreground" />

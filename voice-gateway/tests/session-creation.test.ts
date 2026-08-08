@@ -61,6 +61,34 @@ describe('GET /healthz', () => {
   });
 });
 
+describe('CORS policy', () => {
+  it('allows configured browser origins', async () => {
+    const { app } = await buildTestApp();
+    const origin = config.CORS_ALLOWED_ORIGINS[0]!;
+    const res = await app.inject({
+      method: 'GET',
+      url: '/healthz',
+      headers: { origin },
+    });
+
+    expect(res.headers['access-control-allow-origin']).toBe(origin);
+    await app.close();
+  });
+
+  it('does not grant CORS access to unknown origins', async () => {
+    const { app } = await buildTestApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/healthz',
+      headers: { origin: 'https://not-allowed.example' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+    await app.close();
+  });
+});
+
 describe('POST /api/realtime/session', () => {
   let app: FastifyInstance;
 
@@ -77,7 +105,7 @@ describe('POST /api/realtime/session', () => {
         }),
         text: async () => '',
         headers: { get: () => null },
-      } as unknown as Response)
+      } as unknown as Awaited<ReturnType<typeof mockFetch>>)
       // Second call: relaySdpOffer
       .mockResolvedValueOnce({
         ok: true,
@@ -85,7 +113,7 @@ describe('POST /api/realtime/session', () => {
         text: async () => 'v=0\r\no=- 1234 2 IN IP4 127.0.0.1\r\n',
         json: async () => ({}),
         headers: { get: (h: string) => (h === 'location' ? '/v1/realtime/calls/rtc_testcall123' : null) },
-      } as unknown as Response);
+      } as unknown as Awaited<ReturnType<typeof mockFetch>>);
 
     ({ app } = await buildTestApp());
   });

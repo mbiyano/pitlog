@@ -42,24 +42,20 @@ export async function buildHttpServer(
   await fastify.register(sensible);
 
   await fastify.register(cors, {
-    origin: true,
+    origin(origin, callback) {
+      if (!origin || config.CORS_ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     exposedHeaders: ['X-Session-Id'],
   });
 
   await fastify.register(rateLimit, {
-    max: config.RATE_LIMIT_SESSION_PER_MINUTE,
-    timeWindow: '1 minute',
-    keyGenerator: (req) => {
-      if (req.routeOptions?.url === '/api/realtime/session' && req.method === 'POST') {
-        return (
-          (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-          req.ip
-        );
-      }
-      return '';
-    },
+    global: false,
   });
 
   // ── Content-Type parser for SDP ────────────────────────────────────────────
@@ -88,7 +84,7 @@ export async function buildHttpServer(
   // ── Routes ─────────────────────────────────────────────────────────────────
 
   registerHealthRoutes(fastify, sessionManager);
-  registerRealtimeSessionRoutes(fastify, sessionManager);
+  registerRealtimeSessionRoutes(fastify, sessionManager, config);
 
   // ── 404 handler ────────────────────────────────────────────────────────────
 

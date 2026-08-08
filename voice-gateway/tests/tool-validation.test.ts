@@ -113,23 +113,23 @@ describe('Tool Zod schemas', () => {
   });
 
   describe('actualizar_trabajo', () => {
-    it('accepts minimal input (just trabajoId)', () => {
+    it('rejects an update without persistible fields', () => {
       const result = TOOL_ZOD_SCHEMAS.actualizar_trabajo.safeParse({ trabajoId: 'trabajo-1' });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
-    it('accepts valid estado enum', () => {
+    it('accepts a description update', () => {
       const result = TOOL_ZOD_SCHEMAS.actualizar_trabajo.safeParse({
         trabajoId: 'trabajo-1',
-        estado: 'terminado',
+        descripcion: 'Cambio de aceite y filtro',
       });
       expect(result.success).toBe(true);
     });
 
-    it('rejects invalid estado value', () => {
+    it('rejects estado because the database does not persist it', () => {
       const result = TOOL_ZOD_SCHEMAS.actualizar_trabajo.safeParse({
         trabajoId: 'trabajo-1',
-        estado: 'finalizado',
+        estado: 'terminado',
       });
       expect(result.success).toBe(false);
     });

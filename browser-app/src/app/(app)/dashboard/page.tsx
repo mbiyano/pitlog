@@ -4,9 +4,11 @@ import { getVisitsThisMonth, getRecentVisits } from '@/lib/services/visits'
 import { getDueRemindersCount, getUpcomingReminders } from '@/lib/services/reminders'
 import { PageHeader } from '@/components/layout/page-header'
 import { StatCard } from '@/components/shared/stat-card'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Wrench, Bell, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { SectionHeader } from '@/components/shared/section-header'
+import { Car, Wrench, Bell, Clock, Mic, Plus, ArrowRight } from 'lucide-react'
 import { format, isPast, isToday } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
@@ -26,7 +28,27 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Panel" description="Vista general del taller" />
+      <PageHeader
+        eyebrow="Hoy"
+        title="Panel del taller"
+        description="Buscá un vehículo, revisá pendientes o registrá un nuevo servicio."
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href="/voz">
+                <Mic className="mr-2 h-4 w-4" aria-hidden="true" />
+                Asistente de voz
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/servicio/nuevo">
+                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                Nuevo servicio
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       {/* Quick search */}
       <QuickSearch />
@@ -42,11 +64,13 @@ export default async function DashboardPage() {
           title="Servicios este mes"
           value={visitsThisMonth}
           icon={Wrench}
+          tone="success"
         />
         <StatCard
           title="Recordatorios vencidos"
           value={dueReminders}
           icon={Bell}
+          tone={dueReminders > 0 ? 'warning' : 'success'}
           description={dueReminders > 0 ? 'Requieren atención' : 'Todo al día'}
         />
       </div>
@@ -55,15 +79,15 @@ export default async function DashboardPage() {
         {/* Upcoming reminders */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Próximos recordatorios</CardTitle>
-              <Link
-                href="/recordatorios"
-                className="text-sm text-primary hover:underline"
-              >
-                Ver todos
-              </Link>
-            </div>
+            <SectionHeader
+              title="Próximos recordatorios"
+              icon={Bell}
+              actions={
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/recordatorios">Ver todos <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                </Button>
+              }
+            />
           </CardHeader>
           <CardContent>
             {upcomingReminders.length === 0 ? (
@@ -76,7 +100,7 @@ export default async function DashboardPage() {
                   <Link
                     key={r.id}
                     href={`/vehiculos/${r.vehicle_id}`}
-                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent"
+                    className="interactive-row flex items-center justify-between p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
@@ -109,12 +133,15 @@ export default async function DashboardPage() {
         {/* Recent visits */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Últimos servicios</CardTitle>
-              <Link href="/vehiculos" className="text-sm text-primary hover:underline">
-                Ver todos
-              </Link>
-            </div>
+            <SectionHeader
+              title="Últimos servicios"
+              icon={Wrench}
+              actions={
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/vehiculos">Ver todos <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                </Button>
+              }
+            />
           </CardHeader>
           <CardContent>
             {recentVisits.length === 0 ? (
@@ -127,7 +154,7 @@ export default async function DashboardPage() {
                   <Link
                     key={v.id}
                     href={`/vehiculos/${v.vehicle_id}`}
-                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent"
+                    className="interactive-row flex items-center justify-between p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">

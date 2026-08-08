@@ -97,7 +97,7 @@ export function CustomerDeleteButton({
             disabled={deleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting ? 'Eliminando...' : 'Eliminar'}
+            {deleting ? 'Eliminando…' : 'Eliminar'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

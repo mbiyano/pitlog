@@ -1,0 +1,16 @@
+{
+  "name": "pitlog",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev:app": "pnpm --dir browser-app dev",
+    "dev:gateway": "pnpm --dir voice-gateway dev",
+    "check": "pnpm check:app && pnpm check:gateway",
+    "check:app": "pnpm --dir browser-app check",
+    "check:gateway": "pnpm --dir voice-gateway check",
+    "build": "pnpm --dir browser-app build && pnpm --dir voice-gateway build",
+    "test": "pnpm --dir voice-gateway test"
+  }
+}

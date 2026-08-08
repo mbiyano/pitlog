@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Wrench } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Field } from '@/components/ui/field'
+import { AlertCircle, Loader2, ShieldCheck, Wrench } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -29,7 +31,11 @@ export default function LoginPage() {
         : await supabase.auth.signUp({ email, password })
 
     if (authError) {
-      setError(authError.message)
+      setError(
+        authError.message.toLowerCase().includes('invalid login')
+          ? 'El email o la contraseña no son correctos.'
+          : 'No pudimos completar el ingreso. Revisá los datos e intentá nuevamente.',
+      )
       setLoading(false)
       return
     }
@@ -39,20 +45,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-            <Wrench className="h-8 w-8 text-primary-foreground" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.16),transparent_35%)]" />
+      <Card className="relative w-full max-w-md border-primary/10 shadow-2xl shadow-black/15">
+        <CardHeader className="pb-4 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
+            <Wrench className="h-7 w-7 text-primary-foreground" aria-hidden="true" />
           </div>
-          <CardTitle className="text-2xl">Taller Mecánico</CardTitle>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">PitLog</p>
+          <CardTitle className="mt-1 text-2xl">Gestión del taller</CardTitle>
           <CardDescription>
             {mode === 'login' ? 'Ingresá a tu cuenta' : 'Creá una cuenta nueva'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <Field>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -63,8 +71,8 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
               />
-            </div>
-            <div className="space-y-2">
+            </Field>
+            <Field>
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
@@ -75,12 +83,16 @@ export default function LoginPage() {
                 minLength={6}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
-            </div>
+            </Field>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? 'Cargando...' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
+            <Button type="submit" className="w-full" size="lg" disabled={loading} aria-busy={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+              {loading ? 'Procesando…' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
@@ -88,6 +100,7 @@ export default function LoginPage() {
               <>
                 ¿No tenés cuenta?{' '}
                 <button
+                  type="button"
                   className="text-primary underline-offset-4 hover:underline"
                   onClick={() => setMode('signup')}
                 >
@@ -98,6 +111,7 @@ export default function LoginPage() {
               <>
                 ¿Ya tenés cuenta?{' '}
                 <button
+                  type="button"
                   className="text-primary underline-offset-4 hover:underline"
                   onClick={() => setMode('login')}
                 >
@@ -106,8 +120,12 @@ export default function LoginPage() {
               </>
             )}
           </div>
+          <div className="mt-6 flex items-center justify-center gap-2 border-t pt-4 text-xs text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-success" aria-hidden="true" />
+            Acceso protegido para el equipo del taller
+          </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

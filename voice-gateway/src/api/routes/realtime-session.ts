@@ -1,17 +1,29 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { Env } from '../../config/env.js';
 import type { SessionManager } from '../../realtime/session-manager.js';
 
 export function registerRealtimeSessionRoutes(
   fastify: FastifyInstance,
   sessionManager: SessionManager,
+  config: Env,
 ): void {
+  const sessionRateLimit = {
+    config: {
+      rateLimit: {
+        max: config.RATE_LIMIT_SESSION_PER_MINUTE,
+        timeWindow: '1 minute',
+        keyGenerator: (req: FastifyRequest) =>
+          (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip,
+      },
+    },
+  };
   /**
    * POST /api/realtime/token
    * Creates an OpenAI Realtime session and returns an ephemeral token.
    * The browser calls this while gathering ICE candidates, then sends the
    * SDP offer directly to OpenAI — saving ~800ms by parallelizing.
    */
-  fastify.post('/api/realtime/token', async (req: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/realtime/token', sessionRateLimit, async (req: FastifyRequest, reply: FastifyReply) => {
     req.log.info('Creating ephemeral token');
     const start = Date.now();
 
@@ -39,7 +51,7 @@ export function registerRealtimeSessionRoutes(
    * Legacy: Accept an SDP offer from the browser, create a Realtime session,
    * open sideband, and return the SDP answer.
    */
-  fastify.post('/api/realtime/session', async (req: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/realtime/session', sessionRateLimit, async (req: FastifyRequest, reply: FastifyReply) => {
     const sdpOffer = req.body as string;
 
     if (

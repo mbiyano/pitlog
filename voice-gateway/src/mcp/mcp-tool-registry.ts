@@ -14,7 +14,7 @@ import type {
 
 // Old format: ABC 123 / ABC123
 // New Mercosur format: AB 123 CD / AB123CD
-const PLATE_REGEX = /^[A-Z]{2,3}\s?\d{3}\s?[A-Z]{0,2}$/i;
+const PLATE_REGEX = /^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i;
 
 const plateSchema = z.string().transform((v) => v.toUpperCase().replace(/\s/g, '')).refine(
   (v) => PLATE_REGEX.test(v),
@@ -66,20 +66,24 @@ export const TOOL_ZOD_SCHEMAS = {
     observaciones: z.string().max(500).optional(),
   }),
 
-  agregar_trabajo_a_visita: z.object({
-    visitaId: z.string().min(1),
-    descripcion: z.string().min(1).max(300),
-    repuestos: z.string().max(300).optional(),
-    costo: z.number().min(0).max(10_000_000).optional(),
-  }),
+  agregar_trabajo_a_visita: z
+    .object({
+      visitaId: z.string().min(1),
+      descripcion: z.string().min(1).max(300),
+      repuestos: z.string().max(300).optional(),
+    })
+    .strict(),
 
-  actualizar_trabajo: z.object({
-    trabajoId: z.string().min(1),
-    descripcion: z.string().min(1).max(300).optional(),
-    repuestos: z.string().max(300).optional(),
-    costo: z.number().min(0).max(10_000_000).optional(),
-    estado: z.enum(['pendiente', 'en_proceso', 'terminado']).optional(),
-  }),
+  actualizar_trabajo: z
+    .object({
+      trabajoId: z.string().min(1),
+      descripcion: z.string().min(1).max(300).optional(),
+      repuestos: z.string().max(300).optional(),
+    })
+    .strict()
+    .refine((value) => value.descripcion !== undefined || value.repuestos !== undefined, {
+      message: 'Indicá una descripción o repuestos para actualizar',
+    }),
 
   obtener_historial_auto: z.object({
     autoId: z.string().min(1),
@@ -139,7 +143,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'buscar_auto_por_patente',
     description:
-      'Busca un auto en el taller por su patente. Devuelve los datos del vehículo si existe.',
+      'Busca un auto en el taller por una patente ya confirmada por el usuario. Antes de llamar, repetí las letras y números por separado y esperá confirmación.',
     parameters: {
       type: 'object',
       properties: {
@@ -155,7 +159,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'crear_auto',
     description:
-      'Registra un auto nuevo en el taller. Requiere clienteId obligatorio — primero buscá o creá al cliente. Requiere confirmación explícita del mecánico.',
+      'Registra un auto nuevo con una patente previamente confirmada letra por letra. Requiere clienteId obligatorio — primero buscá o creá al cliente. La confirmación de la patente no reemplaza la confirmación explícita de esta escritura.',
     parameters: {
       type: 'object',
       properties: {
@@ -189,7 +193,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'buscar_cliente',
-    description: 'Busca clientes por nombre, teléfono o email.',
+    description: 'Busca clientes por nombre, teléfono o email. Si el nombre se oyó ambiguo, confirmalo antes; si devuelve varias coincidencias, pedí que el usuario elija.',
     parameters: {
       type: 'object',
       properties: {
@@ -201,7 +205,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'crear_cliente',
-    description: 'Registra un cliente nuevo. Requiere confirmación explícita.',
+    description: 'Registra un cliente nuevo. Confirmá antes el nombre completo y luego pedí una confirmación independiente para guardar.',
     parameters: {
       type: 'object',
       properties: {
@@ -239,7 +243,6 @@ export const TOOL_DEFINITIONS = [
         visitaId: { type: 'string', description: 'ID de la visita.' },
         descripcion: { type: 'string', description: 'Descripción del trabajo realizado.' },
         repuestos: { type: 'string', description: 'Repuestos utilizados (opcional).' },
-        costo: { type: 'number', description: 'Costo en pesos (opcional).' },
       },
       required: ['visitaId', 'descripcion'],
     },
@@ -247,19 +250,13 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'actualizar_trabajo',
-    description: 'Actualiza el estado o datos de un trabajo registrado. Requiere confirmación.',
+    description: 'Actualiza la descripción o los repuestos de un trabajo registrado. Requiere confirmación.',
     parameters: {
       type: 'object',
       properties: {
         trabajoId: { type: 'string', description: 'ID del trabajo a actualizar.' },
         descripcion: { type: 'string', description: 'Nueva descripción.' },
         repuestos: { type: 'string', description: 'Repuestos actualizados.' },
-        costo: { type: 'number', description: 'Costo actualizado.' },
-        estado: {
-          type: 'string',
-          enum: ['pendiente', 'en_proceso', 'terminado'],
-          description: 'Nuevo estado del trabajo.',
-        },
       },
       required: ['trabajoId'],
     },
@@ -453,6 +450,22 @@ export async function dispatchTool(
         break;
     }
 
+    if (WRITE_TOOLS.has(toolName)) {
+      const verified =
+        result !== null &&
+        typeof result === 'object' &&
+        !Array.isArray(result) &&
+        typeof (result as { id?: unknown }).id === 'string' &&
+        (result as { persistenciaVerificada?: unknown }).persistenciaVerificada === true;
+
+      if (!verified) {
+        return {
+          success: false,
+          error: `La herramienta "${toolName}" no pudo verificar la persistencia del registro.`,
+        };
+      }
+    }
+
     return { success: true, result };
   } catch (err) {
     return { success: false, error: (err as Error).message };
@@ -471,9 +484,9 @@ export function buildConfirmationSummaryEs(toolName: ToolName, args: unknown): s
     case 'crear_visita_taller':
       return `Crear visita para el auto ID ${String(a['autoId'] ?? '')} el ${String(a['fecha'] ?? '')}${a['kilometraje'] ? ` con ${String(a['kilometraje'])} km` : ''}.`;
     case 'agregar_trabajo_a_visita':
-      return `Agregar trabajo: "${String(a['descripcion'] ?? '')}"${a['costo'] ? ` — $${String(a['costo'])}` : ''}.`;
+      return `Agregar trabajo: "${String(a['descripcion'] ?? '')}".`;
     case 'actualizar_trabajo':
-      return `Actualizar trabajo ID ${String(a['trabajoId'] ?? '')}${a['estado'] ? ` → estado: ${String(a['estado'])}` : ''}.`;
+      return `Actualizar trabajo ID ${String(a['trabajoId'] ?? '')}.`;
     case 'crear_recordatorio_service':
       return `Crear recordatorio de ${String(a['tipo'] ?? 'service')} para fecha ${String(a['fechaEstimada'] ?? '')}.`;
     default:

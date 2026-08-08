@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldError, FieldHint } from '@/components/ui/field'
+import { Loader2 } from 'lucide-react'
 
 interface VehicleFormProps {
   defaultValues?: Partial<VehicleFormData>
@@ -39,67 +41,74 @@ export function VehicleForm({
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
       {!hideCustomer && (
         <input type="hidden" {...register('customer_id')} />
       )}
 
-      <div className="space-y-2">
+      <Field>
         <Label htmlFor="plate">Patente *</Label>
         <Input
           id="plate"
           placeholder="ABC 123 o AB 123 CD"
-          className="font-mono text-lg uppercase"
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={Boolean(errors.plate)}
+          aria-describedby={errors.plate ? 'plate-error' : 'plate-hint'}
+          className="font-mono text-lg font-semibold uppercase tracking-wider"
           {...register('plate')}
         />
-        {errors.plate && (
-          <p className="text-sm text-destructive">{errors.plate.message}</p>
-        )}
-      </div>
+        <FieldHint id="plate-hint">Formato antiguo: ABC 123. Mercosur: AB 123 CD.</FieldHint>
+        <FieldError id="plate-error">{errors.plate?.message}</FieldError>
+      </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+        <Field>
           <Label htmlFor="make">Marca</Label>
           <Input id="make" placeholder="Ej: Volkswagen" {...register('make')} />
-        </div>
-        <div className="space-y-2">
+        </Field>
+        <Field>
           <Label htmlFor="model">Modelo</Label>
           <Input id="model" placeholder="Ej: Gol Trend" {...register('model')} />
-        </div>
+        </Field>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
+        <Field>
           <Label htmlFor="year">Año</Label>
           <Input id="year" type="number" placeholder="2020" {...register('year')} />
-        </div>
-        <div className="space-y-2">
+        </Field>
+        <Field>
           <Label htmlFor="engine">Motor</Label>
           <Input id="engine" placeholder="1.6 8v" {...register('engine')} />
-        </div>
-        <div className="space-y-2">
+        </Field>
+        <Field>
           <Label htmlFor="mileage_current">Kilometraje</Label>
           <Input
             id="mileage_current"
             type="number"
+            inputMode="numeric"
+            min={0}
             placeholder="0"
             {...register('mileage_current')}
           />
-        </div>
+        </Field>
       </div>
 
-      <div className="space-y-2">
+      <Field>
         <Label htmlFor="vin">VIN (opcional)</Label>
         <Input id="vin" {...register('vin')} />
-      </div>
+        <FieldHint>17 caracteres. Podés completarlo más adelante.</FieldHint>
+      </Field>
 
-      <div className="space-y-2">
+      <Field>
         <Label htmlFor="notes">Notas</Label>
         <Textarea id="notes" rows={3} {...register('notes')} />
-      </div>
+      </Field>
 
-      <Button type="submit" size="lg" disabled={loading}>
-        {loading ? 'Guardando...' : submitLabel}
+      <Button type="submit" size="lg" disabled={loading} aria-busy={loading} className="w-full sm:w-auto">
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+        {loading ? 'Guardando…' : submitLabel}
       </Button>
     </form>
   )

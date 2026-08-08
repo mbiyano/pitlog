@@ -1,6 +1,6 @@
 import { fetch } from 'undici';
 import type { Logger } from '../observability/logger.js';
-import { TOOL_DEFINITIONS } from '../mcp/mcp-tool-registry.js';
+import { buildRealtimeSessionConfig } from './realtime-session-config.js';
 
 const OPENAI_BASE = 'https://api.openai.com';
 
@@ -40,21 +40,7 @@ export async function createRealtimeSession(opts: {
     },
     body: JSON.stringify({
       model,
-      voice,
-      modalities: ['audio', 'text'],
-      instructions,
-      tools: TOOL_DEFINITIONS,
-      tool_choice: 'auto',
-      input_audio_transcription: { model: 'whisper-1' },
-      turn_detection: {
-        type: 'server_vad',
-        threshold: 0.65,
-        prefix_padding_ms: 500,
-        silence_duration_ms: 1200,
-        create_response: true,
-      },
-      temperature: 0.8,
-      max_response_output_tokens: 'inf',
+      ...buildRealtimeSessionConfig(voice, instructions),
     }),
   });
 

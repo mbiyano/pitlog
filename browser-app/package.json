@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm lint && pnpm typecheck",
     "db:migrate": "npx supabase db push",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "npx supabase db reset"

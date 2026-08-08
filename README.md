@@ -1,116 +1,69 @@
 # PitLog
 
-Sistema de gestión para talleres mecánicos con asistente de voz integrado. Pensado para talleres en Argentina que quieren registrar servicios, vehículos y clientes hablando en español rioplatense.
+Sistema de gestión para talleres mecánicos con CRUD web y asistente de voz en español rioplatense.
 
-## Qué hace
+## Componentes
 
-Un mecánico abre la app en el browser, presiona el botón de voz y habla:
+| Directorio | Responsabilidad | Stack |
+|---|---|---|
+| `browser-app/` | UI, autenticación, CRUD, persistencia MCP y cliente WebRTC | Next.js 16, React 19, Supabase, Tailwind |
+| `voice-gateway/` | Sesiones OpenAI Realtime, tokens efímeros, sideband y adaptadores MCP | Fastify 5, TypeScript, Zod, Vitest |
 
-> "Registrá una visita para la patente AB 123 CD, cambio de aceite y filtro"
+Supabase aporta PostgreSQL, Auth y RLS. El browser usa la sesión del usuario para el CRUD normal; las herramientas de voz pasan por una ruta autenticada y una capa de aplicación compartida.
 
-El asistente entiende, pide confirmación, y registra el servicio. También puede buscar historial de vehículos, clientes, y crear recordatorios — todo por voz o por la interfaz web.
+## Flujo de voz activo
 
-## Arquitectura
-
-```
-┌──────────────────────┐         ┌─────────────────────────┐
-│   browser-app        │         │   OpenAI Realtime API   │
-│   (Next.js en Vercel)│         │                         │
-│                      │◄────────┤  Audio WebRTC directo   │
-│   UI + CRUD +        │         │  (peer-to-peer)         │
-│   pantalla de voz    │         │                         │
-└──────┬───────────────┘         └────────────▲────────────┘
-       │                                      │
-       │ SDP offer/answer                     │ Sideband WebSocket
-       │                                      │ (tool calls + control)
-       ▼                                      │
-┌──────────────────────┐                      │
-│   voice-gateway      │──────────────────────┘
-│   (Fastify en Render)│
-│                      │───────► MCP Server (mock o real)
-│   Relay SDP +        │
-│   confirmación de    │───────► Supabase (via MCP)
-│   escrituras         │
-└──────────────────────┘
+```text
+Browser ── pide token efímero ──> voice-gateway ──> OpenAI Realtime
+Browser <──────── token ───────── voice-gateway
+Browser <════ audio + eventos WebRTC directos ═══> OpenAI Realtime
+   │
+   └── tool call autenticado ──> Next.js ──> Supabase
 ```
 
-- **browser-app**: Next.js 15, Supabase (auth + DB), Tailwind, shadcn/ui. Pantallas de clientes, vehículos, servicios, recordatorios y asistente de voz.
-- **voice-gateway**: Fastify 5, TypeScript. Relay de señalización WebRTC, sideband WebSocket hacia OpenAI, routing de tool calls via MCP, confirmación obligatoria antes de escrituras.
+El gateway conserva también un flujo legado que relaya SDP y conecta un sideband WebSocket. La descripción detallada y los límites de seguridad están en [.claude/context/ARCHITECTURE.md](.claude/context/ARCHITECTURE.md).
 
-El audio va directo entre el browser y OpenAI (peer-to-peer). El gateway solo maneja la señalización y los tool calls — nunca toca el audio.
+## Inicio rápido
 
-## Estructura del monorepo
-
-```
-├── browser-app/          # Frontend Next.js (Vercel)
-├── voice-gateway/        # Backend gateway (Render, Docker)
-├── render.yaml           # Render Blueprint (voice-gateway)
-└── CLAUDE.md             # Instrucciones para agentes AI
-```
-
-Cada servicio tiene su propio `README.md` con documentación detallada.
-
-## Quick start
-
-### Requisitos
-
-- Node.js 20+
-- pnpm 9+
-- Cuenta en OpenAI con acceso a Realtime API
-- Cuenta en Supabase
-
-### 1. Voice Gateway
-
-```bash
-cd voice-gateway
-pnpm install
-cp .env.example .env     # agregar OPENAI_API_KEY
-pnpm dev                 # http://localhost:8080
-```
-
-### 2. Browser App
+Requisitos: Node.js 20+, pnpm, Supabase y una API key de OpenAI con acceso a Realtime.
 
 ```bash
 cd browser-app
 pnpm install
-cp .env.example .env     # agregar keys de Supabase
-pnpm dev                 # http://localhost:3000
+cp .env.example .env
+
+cd ../voice-gateway
+pnpm install
+cp .env.example .env
 ```
+
+Completá las variables locales y, desde la raíz, ejecutá en terminales separadas:
+
+```bash
+pnpm dev:app
+pnpm dev:gateway
+```
+
+La app queda en `http://localhost:3000` y el gateway en `http://localhost:8080`.
+
+## Calidad
+
+```bash
+pnpm check
+pnpm build
+pnpm test
+```
+
+`check` ejecuta lint y typecheck en ambos servicios, además de los tests del gateway.
 
 ## Deploy
 
-| Servicio | Plataforma | Motivo |
-|----------|-----------|--------|
-| browser-app | Vercel | Deploy nativo de Next.js |
-| voice-gateway | Render | Soporte de WebSockets persistentes + Docker |
+- `browser-app`: Vercel, con root directory `browser-app`.
+- `voice-gateway`: Render mediante `render.yaml`.
+- Supabase: aplicar en orden las migraciones de `browser-app/supabase/migrations/`.
 
-### Voice Gateway → Render
+Configurá `CORS_ALLOWED_ORIGINS` con el origen exacto de Vercel y usá el mismo `MCP_AUTH_TOKEN` en el gateway y el browser cuando el adaptador HTTP real esté activo. Los secretos nunca deben usar prefijo `NEXT_PUBLIC_`.
 
-1. Subir el repo a GitHub
-2. En Render → New → Blueprint → conectar el repo (detecta `render.yaml`)
-3. Configurar variables secretas en el dashboard: `OPENAI_API_KEY`, `CORS_ALLOWED_ORIGINS`
+## Contexto para agentes
 
-### Browser App → Vercel
-
-1. En Vercel → New Project → importar el repo
-2. Root Directory: `browser-app`
-3. Configurar env vars: Supabase keys + `NEXT_PUBLIC_VOICE_GATEWAY_URL` (URL de Render)
-
-## Tech stack
-
-| Capa | Tecnología |
-|------|-----------|
-| Frontend | Next.js 15, React 19, Tailwind, shadcn/ui |
-| Backend | Fastify 5, TypeScript 5, pino |
-| Base de datos | Supabase (PostgreSQL + Auth + RLS) |
-| Voz | OpenAI Realtime API (WebRTC + WebSocket sideband) |
-| Herramientas | MCP (Model Context Protocol) |
-| Validación | Zod |
-| Deploy | Vercel + Render (Docker) |
-
-## Dominio
-
-- Talleres mecánicos en Argentina
-- Interfaz y asistente en español rioplatense
-- Patentes argentinas: `ABC 123` (viejo) y `AB 123 CD` (Mercosur)
-- Operaciones de escritura requieren confirmación hablada explícita antes de ejecutarse
+Leé [AGENTS.md](AGENTS.md) antes de modificar el repositorio. El contexto de producto, arquitectura y operación está versionado bajo `.claude/context/` y debe actualizarse junto con los cambios estructurales.
