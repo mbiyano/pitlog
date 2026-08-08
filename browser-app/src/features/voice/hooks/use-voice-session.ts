@@ -8,7 +8,7 @@ import {
   isPlateConfirmationPrompt,
   isWriteConfirmationPrompt,
 } from '../lib/confirmation'
-import type { ConnectionState, VoiceEvent } from '../types'
+import type { ConnectionState, VoiceAction, VoiceEvent } from '../types'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ export function useVoiceSession() {
   const [isMuted, setIsMuted] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [assistantText, setAssistantText] = useState('')
-  const [lastAction, setLastAction] = useState<string | null>(null)
+  const [lastAction, setLastAction] = useState<VoiceAction | null>(null)
   const [events, setEvents] = useState<VoiceEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pendingTools, setPendingTools] = useState(0)
@@ -95,7 +95,7 @@ export function useVoiceSession() {
           const isWrite = WRITE_TOOLS.has(name)
           addEvent(`rt.tool.call`, { name, args, isWrite })
           setPendingTools((n) => n + 1)
-          setLastAction(`${isWrite ? '✏️' : '🔍'} ${name}`)
+          setLastAction({ toolName: name, status: 'processing' })
 
           const hasConfirmation =
             hasExplicitWriteConfirmation(lastUserTranscriptRef.current) &&
@@ -176,11 +176,10 @@ export function useVoiceSession() {
           setPendingTools((n) => Math.max(0, n - 1))
           addEvent(`rt.tool.result`, { name, success: result.success, result: result.result, error: result.error })
 
-          if (isWrite && result.success) {
-            setLastAction(`✅ ${name}`)
-          } else if (!result.success) {
-            setLastAction(`❌ ${name}`)
-          }
+          setLastAction({
+            toolName: name,
+            status: result.success ? 'success' : 'error',
+          })
 
           // Build the output sent to the model.
           // When there's an error, make it impossible for the model to misinterpret as success.

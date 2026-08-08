@@ -73,6 +73,7 @@ PitLog currently defaults to dark mode, but both light and dark token sets must 
 
 - Every page uses `PageHeader`; `eyebrow` communicates the parent area, while the title names the current object or task.
 - The main navigation uses `aria-current="page"`. Mobile drawers support Escape, an overlay close target, and explicit expanded state.
+- Data-backed route segments must provide a `loading.tsx` fallback built from `Skeleton`. Navigation feedback appears immediately while the previous screen remains interactive, and skeleton geometry should approximate the incoming page without inventing data.
 - Test at 320, 375, 768, 1024, and 1440 px. No primary action may require horizontal scrolling.
 - Technical/debug information uses progressive disclosure and must not compete with the main workflow.
 
@@ -104,3 +105,4 @@ PitLog currently defaults to dark mode, but both light and dark token sets must 
 - Search behavior: `src/app/(app)/dashboard/quick-search.tsx`
 - Long workflow: `src/app/(app)/servicio/nuevo/page.tsx`
 - Progressive disclosure and voice state: `src/features/voice/components/voice-console.tsx`
+- Route transition feedback: `src/app/(app)/loading.tsx`

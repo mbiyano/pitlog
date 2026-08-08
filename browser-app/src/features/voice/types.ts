@@ -12,3 +12,8 @@ export interface ToolCallResult {
   result?: unknown
   error?: string
 }
+
+export interface VoiceAction {
+  toolName: string
+  status: 'processing' | 'success' | 'error'
+}

@@ -5,8 +5,77 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Activity, Bug, Loader2, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react'
+import {
+  AlertCircle,
+  Activity,
+  Bug,
+  CheckCircle2,
+  Loader2,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Volume2,
+  XCircle,
+} from 'lucide-react'
 import { useVoiceSession } from '../hooks/use-voice-session'
+import type { VoiceAction } from '../types'
+
+const actionLabels: Record<string, string> = {
+  buscar_auto_por_patente: 'Búsqueda de vehículo',
+  crear_auto: 'Registro de vehículo',
+  actualizar_auto: 'Actualización de vehículo',
+  buscar_cliente: 'Búsqueda de cliente',
+  crear_cliente: 'Registro de cliente',
+  crear_visita_taller: 'Registro de visita',
+  agregar_trabajo_a_visita: 'Registro de trabajo',
+  actualizar_trabajo: 'Actualización de trabajo',
+  obtener_historial_auto: 'Consulta de historial',
+  obtener_ultimo_service: 'Consulta del último servicio',
+  crear_recordatorio_service: 'Registro de recordatorio',
+  listar_recordatorios_pendientes: 'Consulta de recordatorios',
+  redactar_mensaje_cliente: 'Redacción de mensaje',
+}
+
+function ActionStatus({ action }: { action: VoiceAction }) {
+  const label = actionLabels[action.toolName] ?? 'Acción del asistente'
+  const status = {
+    processing: {
+      copy: 'En curso',
+      icon: Loader2,
+      iconClassName: 'animate-spin text-info',
+      surfaceClassName: 'bg-info/10',
+      copyClassName: 'text-info',
+    },
+    success: {
+      copy: 'Completada',
+      icon: CheckCircle2,
+      iconClassName: 'text-success',
+      surfaceClassName: 'bg-success/10',
+      copyClassName: 'text-success',
+    },
+    error: {
+      copy: 'No se pudo completar',
+      icon: XCircle,
+      iconClassName: 'text-destructive',
+      surfaceClassName: 'bg-destructive/10',
+      copyClassName: 'text-destructive',
+    },
+  }[action.status]
+  const StatusIcon = status.icon
+
+  return (
+    <>
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-xl ${status.surfaceClassName}`}>
+        <StatusIcon className={`h-5 w-5 ${status.iconClassName}`} aria-hidden="true" />
+      </span>
+      <div className="min-w-0 self-center">
+        <p className="text-xs text-muted-foreground">Última acción</p>
+        <p className="truncate text-sm font-medium">{label}</p>
+        <p className={`mt-0.5 text-xs font-medium ${status.copyClassName}`}>{status.copy}</p>
+      </div>
+    </>
+  )
+}
 
 export function VoiceConsole() {
   const {
@@ -164,16 +233,22 @@ export function VoiceConsole() {
           </Card>
         )}
 
-        <Card>
-          <CardContent className="flex items-center gap-3 py-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <Activity className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Última acción</p>
-              <p className="truncate text-sm font-medium">{lastAction ?? 'Todavía no hay acciones'}</p>
-            </div>
-          </CardContent>
+        <Card aria-live="polite">
+          <div className="grid min-h-24 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 px-5 py-4 sm:px-6">
+            {lastAction ? (
+              <ActionStatus action={lastAction} />
+            ) : (
+              <>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-xl bg-muted text-muted-foreground">
+                  <Activity className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 self-center">
+                  <p className="text-xs text-muted-foreground">Última acción</p>
+                  <p className="text-sm font-medium">Todavía no hay acciones</p>
+                </div>
+              </>
+            )}
+          </div>
         </Card>
 
         <details className="rounded-xl border bg-card/50">
