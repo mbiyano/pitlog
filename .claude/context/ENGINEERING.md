@@ -14,6 +14,8 @@ cd browser-app && pnpm install
 cd ../voice-gateway && pnpm install
 ```
 
+The gateway Docker image uses Node 20 and pins pnpm 10.0.0 in both build stages. Do not use `pnpm@latest` in the Dockerfile: a newer pnpm major may raise its minimum Node version and break otherwise unchanged Render deploys.
+
 Copy each service's `.env.example` to `.env` and provide local values. Never copy real values into docs, tests, logs, or commits.
 
 ## Commands

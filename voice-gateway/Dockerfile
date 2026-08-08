@@ -3,8 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Keep the package manager compatible with Node 20 and reproducible across deploys.
+ARG PNPM_VERSION=10.0.0
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Copy manifests first for better layer caching
 COPY package.json pnpm-lock.yaml* ./
@@ -23,8 +24,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Use the same pinned package manager as the build stage.
+ARG PNPM_VERSION=10.0.0
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Copy manifests
 COPY package.json pnpm-lock.yaml* ./
