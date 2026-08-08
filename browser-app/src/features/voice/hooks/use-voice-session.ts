@@ -88,7 +88,7 @@ export function useVoiceSession() {
                 output: JSON.stringify({ error: 'Argumentos inválidos' }),
               },
             })
-            sendOnDataChannel({ type: 'response.create', response: { modalities: ['audio', 'text'] } })
+            sendOnDataChannel({ type: 'response.create' })
             break
           }
 
@@ -205,7 +205,7 @@ export function useVoiceSession() {
           })
 
           // Trigger the model to generate the next response
-          sendOnDataChannel({ type: 'response.create', response: { modalities: ['audio', 'text'] } })
+          sendOnDataChannel({ type: 'response.create' })
           break
         }
 
@@ -215,7 +215,7 @@ export function useVoiceSession() {
           addEvent('rt.transcript.user', { text: lastUserTranscriptRef.current.slice(0, 80) })
           break
 
-        case 'response.audio_transcript.done':
+        case 'response.output_audio_transcript.done':
           lastAssistantTranscriptRef.current = event.transcript as string
           setAssistantText(lastAssistantTranscriptRef.current)
           addEvent('rt.transcript.assistant', { text: lastAssistantTranscriptRef.current?.slice(0, 80) })
@@ -371,17 +371,14 @@ export function useVoiceSession() {
 
       // ── Send SDP directly to OpenAI using the ephemeral token ───────────
       addEvent('sdp.offer.sending', { direct: true })
-      const sdpResponse = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(tokenData.model)}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${tokenData.token}`,
-            'Content-Type': 'application/sdp',
-          },
-          body: pc.localDescription!.sdp,
+      const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenData.token}`,
+          'Content-Type': 'application/sdp',
         },
-      )
+        body: pc.localDescription!.sdp,
+      })
 
       if (!sdpResponse.ok) {
         const text = await sdpResponse.text()

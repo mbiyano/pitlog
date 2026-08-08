@@ -20,8 +20,8 @@ export function registerRealtimeSessionRoutes(
   /**
    * POST /api/realtime/token
    * Creates an OpenAI Realtime session and returns an ephemeral token.
-   * The browser calls this while gathering ICE candidates, then sends the
-   * SDP offer directly to OpenAI — saving ~800ms by parallelizing.
+   * The browser calls this in parallel with microphone access, then sends the
+   * SDP offer directly to OpenAI.
    */
   fastify.post('/api/realtime/token', sessionRateLimit, async (req: FastifyRequest, reply: FastifyReply) => {
     req.log.info('Creating ephemeral token');

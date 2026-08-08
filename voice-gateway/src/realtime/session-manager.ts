@@ -41,8 +41,8 @@ export class SessionManager {
 
   /**
    * Lightweight: creates the OpenAI Realtime session and returns an ephemeral
-   * token. The browser can call this WHILE gathering ICE candidates, then send
-   * the SDP directly to OpenAI with the token.
+   * token. The browser requests this in parallel with microphone access, then
+   * sends the SDP directly to OpenAI with the token.
    */
   async createToken(): Promise<CreateTokenResult> {
     const sessionId = randomUUID();
@@ -110,7 +110,6 @@ export class SessionManager {
     const { sdpAnswer, callId } = await relaySdpOffer({
       sdpOffer,
       ephemeralToken,
-      model: this.config.OPENAI_REALTIME_MODEL,
       log,
     });
 

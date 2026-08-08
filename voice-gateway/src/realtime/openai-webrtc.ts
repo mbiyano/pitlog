@@ -15,8 +15,8 @@ export interface RelaySdpResult {
 }
 
 /**
- * Step 1 — Create a server-side Realtime session.
- * Returns a session ID and a short-lived ephemeral token (ek_...) for signaling.
+ * Step 1 — Create a short-lived Realtime client secret.
+ * OpenAI creates the associated session and returns its ID with the secret.
  *
  * Includes full session config (instructions, tools, turn_detection) so the
  * model has everything it needs from the moment WebRTC audio begins — before
@@ -32,15 +32,17 @@ export async function createRealtimeSession(opts: {
   const { apiKey, model, voice, instructions, log } = opts;
   const start = Date.now();
 
-  const res = await fetch(`${OPENAI_BASE}/v1/realtime/sessions`, {
+  const res = await fetch(`${OPENAI_BASE}/v1/realtime/client_secrets`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model,
-      ...buildRealtimeSessionConfig(voice, instructions),
+      session: {
+        model,
+        ...buildRealtimeSessionConfig(voice, instructions),
+      },
     }),
   });
 
@@ -48,27 +50,27 @@ export async function createRealtimeSession(opts: {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    log.error({ status: res.status, elapsed }, 'Failed to create Realtime session');
-    throw new Error(`OpenAI session creation failed (${res.status}): ${body}`);
+    log.error({ status: res.status, elapsed }, 'Failed to create Realtime client secret');
+    throw new Error(`OpenAI client secret creation failed (${res.status}): ${body}`);
   }
 
   const data = (await res.json()) as {
-    id: string;
-    client_secret?: { value: string };
+    value?: string;
+    session?: { id?: string };
   };
 
-  if (!data.id) {
-    throw new Error('OpenAI session response missing id');
+  if (!data.session?.id) {
+    throw new Error('OpenAI client secret response missing session.id');
   }
-  if (!data.client_secret?.value) {
-    throw new Error('OpenAI session response missing client_secret.value');
+  if (!data.value) {
+    throw new Error('OpenAI client secret response missing value');
   }
 
-  log.info({ realtimeSessionId: data.id, elapsed }, 'Realtime session created');
+  log.info({ realtimeSessionId: data.session.id, elapsed }, 'Realtime session created');
 
   return {
-    realtimeSessionId: data.id,
-    ephemeralToken: data.client_secret.value,
+    realtimeSessionId: data.session.id,
+    ephemeralToken: data.value,
   };
 }
 
@@ -80,13 +82,12 @@ export async function createRealtimeSession(opts: {
 export async function relaySdpOffer(opts: {
   sdpOffer: string;
   ephemeralToken: string;
-  model: string;
   log: Logger;
 }): Promise<RelaySdpResult> {
-  const { sdpOffer, ephemeralToken, model, log } = opts;
+  const { sdpOffer, ephemeralToken, log } = opts;
   const start = Date.now();
 
-  const url = `${OPENAI_BASE}/v1/realtime?model=${encodeURIComponent(model)}`;
+  const url = `${OPENAI_BASE}/v1/realtime/calls`;
 
   const res = await fetch(url, {
     method: 'POST',

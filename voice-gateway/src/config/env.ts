@@ -5,7 +5,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
   OPENAI_REALTIME_MODEL: z
     .string()
-    .default('gpt-4o-realtime-preview-2024-12-17'),
+    .default('gpt-realtime-2.1'),
   OPENAI_REALTIME_VOICE: z
     .enum(['alloy', 'echo', 'shimmer', 'ash', 'ballad', 'coral', 'sage', 'verse'])
     .default('shimmer'),

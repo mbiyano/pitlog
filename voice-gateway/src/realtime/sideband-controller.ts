@@ -141,7 +141,6 @@ export class SidebandController {
     this.ws = new WebSocket(wsUrl, {
       headers: {
         Authorization: `Bearer ${this.config.OPENAI_API_KEY}`,
-        'OpenAI-Beta': 'realtime=v1',
       },
     });
 
@@ -312,10 +311,7 @@ export class SidebandController {
     });
 
     // Trigger a new response so the model reads the summary
-    this.send({
-      type: 'response.create',
-      response: { modalities: ['audio', 'text'] },
-    });
+    this.send({ type: 'response.create' });
     this.journal.append('outbound', 'response.create', { reason: 'awaiting_confirmation' });
   }
 
@@ -408,7 +404,7 @@ export class SidebandController {
       },
     };
     this.send(event);
-    this.send({ type: 'response.create', response: { modalities: ['audio', 'text'] } });
+    this.send({ type: 'response.create' });
     this.journal.append('outbound', 'conversation.item.create', { type: 'system_message' });
   }
 

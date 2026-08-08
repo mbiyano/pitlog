@@ -7,20 +7,35 @@ import { TOOL_DEFINITIONS } from '../mcp/mcp-tool-registry.js';
  */
 export function buildRealtimeSessionConfig(voice: string, instructions: string) {
   return {
-    voice,
-    modalities: ['audio', 'text'],
+    type: 'realtime' as const,
+    output_modalities: ['audio'],
     instructions,
     tools: TOOL_DEFINITIONS,
     tool_choice: 'auto',
-    input_audio_transcription: { model: 'whisper-1' },
-    turn_detection: {
-      type: 'server_vad',
-      threshold: 0.65,
-      prefix_padding_ms: 500,
-      silence_duration_ms: 1200,
-      create_response: true,
+    audio: {
+      input: {
+        noise_reduction: {
+          type: 'near_field',
+        },
+        transcription: {
+          model: 'gpt-4o-mini-transcribe',
+          language: 'es',
+          prompt:
+            'Español rioplatense. Esperá nombres, apellidos y patentes argentinas; transcribí letras y números literalmente.',
+        },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.65,
+          prefix_padding_ms: 500,
+          silence_duration_ms: 1200,
+          create_response: true,
+          interrupt_response: true,
+        },
+      },
+      output: {
+        voice,
+      },
     },
-    temperature: 0.8,
-    max_response_output_tokens: 'inf',
+    max_output_tokens: 'inf',
   };
 }

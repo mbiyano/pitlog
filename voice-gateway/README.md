@@ -23,7 +23,7 @@ Requiere Node.js 20+ y `OPENAI_API_KEY`. Escucha en `http://localhost:8080` por 
 | `POST /api/realtime/session/:id/end` | finaliza la sesión |
 | `GET /api/realtime/session/:id/events` | journal de depuración |
 
-El flujo principal del browser usa `/api/realtime/token` y negocia SDP directamente con OpenAI. El flujo `/api/realtime/session` conserva el relay y conecta el sideband usando el `call_id` cuando OpenAI lo devuelve.
+El flujo principal del browser usa `/api/realtime/token`: el gateway crea un secreto efímero mediante `/v1/realtime/client_secrets` y el browser negocia el SDP directamente con `/v1/realtime/calls`. El modelo predeterminado es `gpt-realtime-2.1`. El flujo `/api/realtime/session` conserva el relay y conecta el sideband usando el `call_id` cuando OpenAI lo devuelve.
 
 ## Módulos
 
@@ -42,7 +42,7 @@ src/
 
 ```env
 USE_MOCK_MCP=false
-MCP_SERVER_BASE_URL=http://localhost:3000/api
+MCP_SERVER_BASE_URL=http://localhost:3000/api # en Render, usar la URL pública de Vercel
 MCP_AUTH_TOKEN=un-secreto-compartido
 ```
 

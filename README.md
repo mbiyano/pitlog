@@ -64,6 +64,8 @@ pnpm test
 
 Configurá `CORS_ALLOWED_ORIGINS` con el origen exacto de Vercel y usá el mismo `MCP_AUTH_TOKEN` en el gateway y el browser cuando el adaptador HTTP real esté activo. Los secretos nunca deben usar prefijo `NEXT_PUBLIC_`.
 
+En Render, configurá también `NODE_ENV=production`, `OPENAI_REALTIME_MODEL=gpt-realtime-2.1`, `USE_MOCK_MCP=false` y `MCP_SERVER_BASE_URL=https://<tu-dominio-vercel>/api`. El flujo WebRTC actual crea secretos efímeros en `/v1/realtime/client_secrets` y envía el SDP a `/v1/realtime/calls`.
+
 ## Contexto para agentes
 
 Leé [AGENTS.md](AGENTS.md) antes de modificar el repositorio. El contexto de producto, arquitectura y operación está versionado bajo `.claude/context/` y debe actualizarse junto con los cambios estructurales.

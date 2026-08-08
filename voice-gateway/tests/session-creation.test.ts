@@ -94,14 +94,16 @@ describe('POST /api/realtime/session', () => {
 
   beforeEach(async () => {
     const { fetch: mockFetch } = await import('undici');
+    vi.clearAllMocks();
     vi.mocked(mockFetch)
       // First call: createRealtimeSession
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({
-          id: 'sess_test123',
-          client_secret: { value: 'ek_testtoken' },
+          value: 'ek_testtoken',
+          expires_at: 1_800_000_000,
+          session: { id: 'sess_test123' },
         }),
         text: async () => '',
         headers: { get: () => null },
@@ -143,6 +145,50 @@ describe('POST /api/realtime/session', () => {
     expect(res.statusCode).toBe(201);
     expect(res.headers['content-type']).toContain('application/sdp');
     expect(res.headers['x-session-id']).toBeTruthy();
+
+    const { fetch: mockFetch } = await import('undici');
+    const [clientSecretsCall, callsCall] = vi.mocked(mockFetch).mock.calls;
+    expect(clientSecretsCall?.[0]).toBe('https://api.openai.com/v1/realtime/client_secrets');
+    expect(callsCall?.[0]).toBe('https://api.openai.com/v1/realtime/calls');
+
+    const clientSecretRequest = clientSecretsCall?.[1] as { body?: string };
+    const requestBody = JSON.parse(clientSecretRequest.body ?? '{}') as {
+      session?: Record<string, unknown>;
+    };
+    expect(requestBody.session).toMatchObject({
+      type: 'realtime',
+      model: 'gpt-realtime-2.1',
+      output_modalities: ['audio'],
+      audio: {
+        input: {
+          transcription: {
+            model: 'gpt-4o-mini-transcribe',
+            language: 'es',
+          },
+        },
+      },
+    });
+    expect(requestBody.session).not.toHaveProperty('modalities');
+    expect(requestBody.session).not.toHaveProperty('temperature');
+  });
+
+  it('returns a current Realtime client secret for browser-direct signaling', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/realtime/token',
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({
+      token: 'ek_testtoken',
+      model: 'gpt-realtime-2.1',
+    });
+
+    const { fetch: mockFetch } = await import('undici');
+    expect(vi.mocked(mockFetch)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(mockFetch).mock.calls[0]?.[0]).toBe(
+      'https://api.openai.com/v1/realtime/client_secrets',
+    );
   });
 });
 

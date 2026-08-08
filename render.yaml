@@ -10,6 +10,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: OPENAI_REALTIME_MODEL
+        value: gpt-realtime-2.1
       - key: LOG_LEVEL
         value: info
       - key: OPENAI_API_KEY
@@ -19,7 +21,7 @@ services:
       - key: GATEWAY_BEARER_TOKEN
         sync: false # optional — set in dashboard if you want auth
       - key: USE_MOCK_MCP
-        value: "true"
+        value: "false"
       - key: MCP_SERVER_BASE_URL
         sync: false
       - key: MCP_AUTH_TOKEN

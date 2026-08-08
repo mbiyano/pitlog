@@ -48,10 +48,12 @@ Browser server-only values:
 Gateway server-only values:
 
 - `OPENAI_API_KEY`
+- `OPENAI_REALTIME_MODEL` (defaults to `gpt-realtime-2.1`)
 - `GATEWAY_BEARER_TOKEN` when gateway bearer auth is enabled
 - `MCP_SERVER_BASE_URL` and `MCP_AUTH_TOKEN` when `USE_MOCK_MCP=false`
 
 `CORS_ALLOWED_ORIGINS` is a comma-separated gateway allowlist. Include the browser deployment origin exactly, including scheme and port where applicable.
+In production, `NODE_ENV` must be `production`, `USE_MOCK_MCP` must be `false`, and `MCP_SERVER_BASE_URL` must be the public Vercel `/api` URL rather than localhost.
 
 ## Change recipes
 
