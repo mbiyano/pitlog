@@ -117,7 +117,6 @@ export function registerRealtimeSessionRoutes(
         visit: state.visit,
         intent: state.intent,
         missingFields: state.missingFields,
-        hasPendingConfirmation: state.pendingConfirmation !== null,
         summary: state.summary,
       });
     },

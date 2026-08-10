@@ -68,11 +68,11 @@ When changing a database record:
 
 When changing a voice tool:
 
-1. Update Zod schema, read/write sets, Realtime tool definition, dispatcher, and confirmation summary in `voice-gateway/src/mcp/`.
+1. Update the Zod schema, read/write sets, Realtime tool definition, and dispatcher in `voice-gateway/src/mcp/`.
 2. Update the browser MCP method map if the real adapter persists it there.
 3. Keep mock behavior and integration DTOs aligned.
-4. Add gateway tests for validation, dispatch, guardrails, and confirmation behavior.
-5. If it is a write, add it to the browser `WRITE_TOOLS` set and preserve explicit confirmation.
+4. Add gateway tests for validation, dispatch, guardrails, entity ambiguity, and persistence verification.
+5. If it is a write, add it to the browser `WRITE_TOOLS` set so unverified persistence cannot be reported as success.
 6. A write adapter must read the persisted row back and return its ID with `persistenciaVerificada: true`; dispatch treats an unverified write result as a failure.
 
 When changing the Realtime prompt or media settings, update the single sources in `workshop-assistant.ts` and `realtime-session-config.ts`; do not duplicate session configuration inside transport functions.
@@ -81,7 +81,6 @@ When changing the Realtime prompt or media settings, update the single sources i
 
 - Frontend has no automated unit/component test runner yet.
 - The tool contract is duplicated between gateway definitions and browser persistence handlers; contract drift is possible.
-- Browser and sideband confirmation detectors are separate implementations and must be kept aligned.
 - The browser-direct token flow and legacy sideband flow coexist. Consolidating on one authoritative tool-execution path would simplify guarantees.
 - Service visit + items + reminders creation is not transactional.
 - RLS is authenticated-user-wide rather than tenant-scoped.

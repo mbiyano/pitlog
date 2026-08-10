@@ -143,7 +143,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'buscar_auto_por_patente',
     description:
-      'Busca un auto en el taller por una patente ya confirmada por el usuario. Antes de llamar, repetí las letras y números por separado y esperá confirmación.',
+      'Busca un auto en el taller por patente. Llamala inmediatamente si la patente se oyó con claridad; si alguna letra es ambigua, preguntá solo por esa parte.',
     parameters: {
       type: 'object',
       properties: {
@@ -159,7 +159,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'crear_auto',
     description:
-      'Registra un auto nuevo con una patente previamente confirmada letra por letra. Requiere clienteId obligatorio — primero buscá o creá al cliente. La confirmación de la patente no reemplaza la confirmación explícita de esta escritura.',
+      'Registra inmediatamente un auto nuevo cuando el usuario lo pide y los datos están claros. Requiere clienteId obligatorio y dos búsquedas previas sin resultados para la misma patente.',
     parameters: {
       type: 'object',
       properties: {
@@ -176,7 +176,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'actualizar_auto',
     description:
-      'Actualiza datos de un auto existente (marca, modelo, año, kilometraje o cliente asignado). Requiere confirmación explícita.',
+      'Actualiza inmediatamente los datos de un auto existente cuando el usuario lo pide (marca, modelo, año, kilometraje o cliente asignado).',
     parameters: {
       type: 'object',
       properties: {
@@ -205,7 +205,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'crear_cliente',
-    description: 'Registra un cliente nuevo. Confirmá antes el nombre completo y luego pedí una confirmación independiente para guardar.',
+    description: 'Registra inmediatamente un cliente nuevo. Si alguna letra del nombre es ambigua, aclarala antes; si el nombre se oyó claramente, no lo repitas ni pidas confirmación.',
     parameters: {
       type: 'object',
       properties: {
@@ -219,7 +219,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'crear_visita_taller',
-    description: 'Registra una nueva visita al taller para un vehículo. Requiere confirmación.',
+    description: 'Registra inmediatamente una nueva visita al taller cuando el usuario lo pide.',
     parameters: {
       type: 'object',
       properties: {
@@ -236,7 +236,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function' as const,
     name: 'agregar_trabajo_a_visita',
     description:
-      'Agrega un trabajo realizado a una visita existente. Requiere confirmación.',
+      'Agrega inmediatamente un trabajo realizado a una visita existente cuando el usuario lo pide.',
     parameters: {
       type: 'object',
       properties: {
@@ -250,7 +250,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'actualizar_trabajo',
-    description: 'Actualiza la descripción o los repuestos de un trabajo registrado. Requiere confirmación.',
+    description: 'Actualiza inmediatamente la descripción o los repuestos de un trabajo registrado cuando el usuario lo pide.',
     parameters: {
       type: 'object',
       properties: {
@@ -288,7 +288,7 @@ export const TOOL_DEFINITIONS = [
   {
     type: 'function' as const,
     name: 'crear_recordatorio_service',
-    description: 'Crea un recordatorio de service para un vehículo. Requiere confirmación.',
+    description: 'Crea inmediatamente un recordatorio de service para un vehículo cuando el usuario lo pide.',
     parameters: {
       type: 'object',
       properties: {
@@ -469,27 +469,5 @@ export async function dispatchTool(
     return { success: true, result };
   } catch (err) {
     return { success: false, error: (err as Error).message };
-  }
-}
-
-export function buildConfirmationSummaryEs(toolName: ToolName, args: unknown): string {
-  const a = args as Record<string, unknown>;
-  switch (toolName) {
-    case 'crear_auto':
-      return `Registrar auto ${String(a['patente'] ?? '')} ${String(a['marca'] ?? '')} ${String(a['modelo'] ?? '')} ${String(a['anio'] ?? '')}.`;
-    case 'actualizar_auto':
-      return `Actualizar auto ID ${String(a['autoId'] ?? '')}${a['clienteId'] ? ` → cliente: ${String(a['clienteId'])}` : ''}${a['marca'] ? ` → marca: ${String(a['marca'])}` : ''}${a['modelo'] ? ` → modelo: ${String(a['modelo'])}` : ''}.`;
-    case 'crear_cliente':
-      return `Registrar cliente "${String(a['nombre'] ?? '')}"${a['telefono'] ? `, teléfono ${String(a['telefono'])}` : ''}.`;
-    case 'crear_visita_taller':
-      return `Crear visita para el auto ID ${String(a['autoId'] ?? '')} el ${String(a['fecha'] ?? '')}${a['kilometraje'] ? ` con ${String(a['kilometraje'])} km` : ''}.`;
-    case 'agregar_trabajo_a_visita':
-      return `Agregar trabajo: "${String(a['descripcion'] ?? '')}".`;
-    case 'actualizar_trabajo':
-      return `Actualizar trabajo ID ${String(a['trabajoId'] ?? '')}.`;
-    case 'crear_recordatorio_service':
-      return `Crear recordatorio de ${String(a['tipo'] ?? 'service')} para fecha ${String(a['fechaEstimada'] ?? '')}.`;
-    default:
-      return `Ejecutar ${toolName} con los datos indicados.`;
   }
 }

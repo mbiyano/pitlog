@@ -42,7 +42,7 @@ Para preparar la base, aplicá en orden los archivos de `supabase/migrations/`. 
 ```text
 src/
 ├── app/                    rutas y transports HTTP
-├── features/voice/         UI, WebRTC, confirmación y aplicación MCP
+├── features/voice/         UI, WebRTC, protecciones y aplicación MCP
 ├── components/             primitives y componentes compartidos
 └── lib/
     ├── services/           acceso Supabase para pantallas CRUD
@@ -50,7 +50,7 @@ src/
     └── validations/        schemas Zod de formularios
 ```
 
-La página `/voz` pide un token efímero al gateway mientras reúne candidatos ICE y luego negocia SDP directamente con OpenAI. Los eventos de herramienta vuelven por el data channel; las escrituras se bloquean si el último turno no contiene una confirmación explícita.
+La página `/voz` pide un token efímero al gateway en paralelo con el acceso al micrófono y luego negocia SDP directamente con OpenAI. Los eventos de herramienta vuelven por el data channel; una orden clara ejecuta la escritura sin una confirmación adicional, pero el resultado solo se informa como exitoso cuando Supabase verifica la persistencia.
 
 ## Verificación
 

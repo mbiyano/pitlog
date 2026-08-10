@@ -15,7 +15,7 @@ Use the code as the final authority. Keep those context files synchronized whene
 ## Repository boundaries
 
 - `browser-app/` owns the Next.js UI, Supabase-backed CRUD, authenticated browser tool endpoint, and the server-to-server MCP endpoint.
-- `voice-gateway/` owns OpenAI Realtime session creation, optional sideband control, MCP adapters, confirmation policy, and gateway HTTP security.
+- `voice-gateway/` owns OpenAI Realtime session creation, optional sideband control, MCP adapters, voice entity-clarification policy, and gateway HTTP security.
 - `browser-app/supabase/migrations/` is the source of truth for the database schema and RLS policies.
 - Route files should be thin transport adapters. Put reusable behavior in `features/`, `lib/`, or a backend domain module.
 - Preserve the feature-oriented `browser-app/src/features/voice/` boundary. UI components must not gain server-only imports.
@@ -25,7 +25,7 @@ Use the code as the final authority. Keep those context files synchronized whene
 
 - User-facing UI and spoken assistant text use natural Rioplatense Spanish. Code identifiers and technical comments use English.
 - Never expose or log `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MCP_AUTH_TOKEN`, gateway bearer tokens, ephemeral Realtime tokens, or raw SDP.
-- A voice-initiated write requires explicit spoken confirmation. The browser-direct path enforces this in `features/voice/lib/confirmation.ts`; the sideband path enforces it in `ConfirmationManager`. Keep both paths behaviorally aligned.
+- A clear voice request authorizes its write; do not add a generic confirmation turn. Ask only for missing required data or exact names, surnames, and plates that are genuinely ambiguous. Both browser-direct and sideband paths must still verify persistence before reporting success.
 - A vehicle must have an existing customer. Never silently create an unassigned placeholder customer.
 - Browser tool calls require an authenticated Supabase user. Server-to-server MCP calls require `MCP_AUTH_TOKEN` in production.
 - Gateway CORS must use `CORS_ALLOWED_ORIGINS`; do not replace it with a permissive wildcard.

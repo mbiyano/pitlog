@@ -26,17 +26,6 @@ export interface VisitContext {
   kilometraje?: number;
 }
 
-export interface PendingConfirmation {
-  id: string;
-  toolName: string;
-  args: Record<string, unknown>;
-  summaryEs: string;
-  realtimeItemId: string;
-  callId: string;
-  createdAt: number;
-  expiresAt: number;
-}
-
 export interface SessionState {
   sessionId: string;
   realtimeSessionId: string;
@@ -50,7 +39,6 @@ export interface SessionState {
   lastMcpResult: unknown;
   intent: string | null;
   missingFields: string[];
-  pendingConfirmation: PendingConfirmation | null;
   summary: string;
   metadata: Record<string, unknown>;
 }
@@ -74,7 +62,6 @@ export function createInitialState(
     lastMcpResult: null,
     intent: null,
     missingFields: [],
-    pendingConfirmation: null,
     summary: '',
     metadata: {},
   };

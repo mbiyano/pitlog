@@ -31,7 +31,7 @@ El flujo principal del browser usa `/api/realtime/token`: el gateway crea un sec
 src/
 ├── api/              Fastify, CORS, rate limit y rutas
 ├── config/           entorno validado con Zod
-├── conversation/     estado y confirmaciones
+├── conversation/     estado de la sesión
 ├── mcp/              contratos, tools, adaptadores y factory
 ├── policies/         guardrails
 ├── realtime/         sesiones, prompt, config y sideband
@@ -55,7 +55,7 @@ El adaptador envía JSON-RPC a `${MCP_SERVER_BASE_URL}/mcp`.
 - La creación de sesiones tiene rate limit por IP.
 - `GATEWAY_BEARER_TOKEN` protege las rutas salvo `/healthz` cuando se configura; un browser público no debe recibir ese secreto.
 - Los logs redactan credenciales, tokens y SDP.
-- Las escrituras procesadas por sideband pasan por `ConfirmationManager`.
+- Las escrituras procesadas por sideband se ejecutan ante una orden clara y solo se informan como exitosas después de verificar la persistencia.
 
 ## Verificación
 

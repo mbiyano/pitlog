@@ -99,7 +99,7 @@ export function VoiceConsole() {
       <PageHeader
         eyebrow="Herramientas"
         title="Asistente de voz"
-        description="Consultá información y registrá tareas sin dejar de trabajar. Las escrituras siempre requieren tu confirmación."
+        description="Consultá información y registrá tareas sin dejar de trabajar. Las órdenes claras se ejecutan sin pasos extra."
       />
 
       <div className="mx-auto max-w-4xl space-y-6">
@@ -187,7 +187,7 @@ export function VoiceConsole() {
                     : 'Tocá el botón para comenzar'}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                El asistente repetirá los datos sensibles y pedirá confirmación antes de guardar.
+                Solo te pedirá una aclaración si un nombre o una patente no se entiende bien.
               </p>
             </div>
 

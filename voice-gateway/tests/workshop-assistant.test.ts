@@ -2,16 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { SYSTEM_INSTRUCTIONS } from '../src/realtime/workshop-assistant.js';
 
 describe('Workshop assistant instructions', () => {
-  it('requires a plate read-back before using tools', () => {
-    expect(SYSTEM_INSTRUCTIONS).toContain('repetila separando letras y números');
-    expect(SYSTEM_INSTRUCTIONS).toContain('Esperá una confirmación o corrección');
+  it('executes clear requests without a redundant confirmation', () => {
+    expect(SYSTEM_INSTRUCTIONS).toContain('ya autoriza esa operación');
+    expect(SYSTEM_INSTRUCTIONS).toContain('No pidas una confirmación adicional');
+    expect(SYSTEM_INSTRUCTIONS).not.toContain('¿Confirmás que guarde estos datos?');
   });
 
-  it('keeps identifier and write confirmations separate', () => {
-    expect(SYSTEM_INSTRUCTIONS).toContain(
-      'La confirmación de una patente o un nombre solo valida cómo se escuchó ese dato',
-    );
-    expect(SYSTEM_INSTRUCTIONS).toContain('¿Confirmás que guarde estos datos?');
+  it('clarifies only genuinely ambiguous name or plate characters', () => {
+    expect(SYSTEM_INSTRUCTIONS).toContain('Si dudás de una o más letras, no adivines');
+    expect(SYSTEM_INSTRUCTIONS).toContain('Preguntá solo por la parte ambigua');
+    expect(SYSTEM_INSTRUCTIONS).toContain('aceptalo y usalo sin repetirlo ni deletrearlo');
+  });
+
+  it('suppresses action announcements and tool preambles', () => {
+    expect(SYSTEM_INSTRUCTIONS).toContain('No anuncies lo que vas a hacer');
+    expect(SYSTEM_INSTRUCTIONS).toContain('Llamá a las herramientas sin preámbulos');
   });
 
   it('only reports a verified write as successful', () => {

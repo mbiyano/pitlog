@@ -3,11 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { executeToolCall } from '../api/execute-tool-call'
 import { VOICE_GATEWAY_URL, WRITE_TOOLS } from '../config'
-import {
-  hasExplicitWriteConfirmation,
-  isPlateConfirmationPrompt,
-  isWriteConfirmationPrompt,
-} from '../lib/confirmation'
 import type { ConnectionState, VoiceAction, VoiceEvent } from '../types'
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -27,9 +22,6 @@ export function useVoiceSession() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const eventIdRef = useRef(0)
-  const lastUserTranscriptRef = useRef('')
-  const lastAssistantTranscriptRef = useRef('')
-  const confirmedPlatesRef = useRef(new Set<string>())
   const plateMissesRef = useRef(new Map<string, number>())
 
   const addEvent = useCallback((type: string, data?: unknown) => {
@@ -97,32 +89,16 @@ export function useVoiceSession() {
           setPendingTools((n) => n + 1)
           setLastAction({ toolName: name, status: 'processing' })
 
-          const hasConfirmation =
-            hasExplicitWriteConfirmation(lastUserTranscriptRef.current) &&
-            isWriteConfirmationPrompt(lastAssistantTranscriptRef.current)
           const normalizedPlate =
             typeof args.patente === 'string'
               ? args.patente.toUpperCase().replace(/\s/g, '')
               : null
-          const hasPlateReadBackConfirmation =
-            hasExplicitWriteConfirmation(lastUserTranscriptRef.current) &&
-            isPlateConfirmationPrompt(lastAssistantTranscriptRef.current)
 
           let result
-          if (name === 'buscar_auto_por_patente' && !hasPlateReadBackConfirmation) {
+          if (name === 'crear_auto' && !normalizedPlate) {
             result = {
               success: false,
-              error:
-                'PATENTE_NO_CONFIRMADA: repetí la patente separando letras y números, preguntá si es correcta y esperá la respuesta antes de buscar.',
-            }
-          } else if (
-            name === 'crear_auto' &&
-            (!normalizedPlate || !confirmedPlatesRef.current.has(normalizedPlate))
-          ) {
-            result = {
-              success: false,
-              error:
-                'PATENTE_NO_CONFIRMADA: no se puede crear el vehículo hasta confirmar la patente letra por letra y buscarla.',
+              error: 'PATENTE_REQUERIDA: no se puede crear el vehículo sin una patente válida.',
             }
           } else if (
             name === 'crear_auto' &&
@@ -132,20 +108,13 @@ export function useVoiceSession() {
             result = {
               success: false,
               error:
-                'SEGUNDA_BUSQUEDA_REQUERIDA: repetí y confirmá nuevamente la patente, y volvé a buscarla antes de ofrecer crear el vehículo.',
-            }
-          } else if (isWrite && !hasConfirmation) {
-            result = {
-              success: false,
-              error:
-                'CONFIRMACION_REQUERIDA: resumí la escritura y preguntá "¿Confirmás que guarde estos datos?". La confirmación de una patente o nombre no autoriza a guardar.',
+                'SEGUNDA_BUSQUEDA_REQUERIDA: buscá nuevamente la misma patente sin pedir otra confirmación antes de crear el vehículo.',
             }
           } else {
             result = await executeToolCall(name, args)
           }
 
           if (name === 'buscar_auto_por_patente' && result.success && normalizedPlate) {
-            confirmedPlatesRef.current.add(normalizedPlate)
             plateMissesRef.current.set(
               normalizedPlate,
               result.result === null ? (plateMissesRef.current.get(normalizedPlate) ?? 0) + 1 : 0,
@@ -167,10 +136,6 @@ export function useVoiceSession() {
                 error: `No se pudo verificar en la base que la herramienta "${name}" haya guardado el registro.`,
               }
             }
-          }
-
-          if (isWrite && result.success) {
-            lastUserTranscriptRef.current = ''
           }
 
           setPendingTools((n) => Math.max(0, n - 1))
@@ -210,15 +175,13 @@ export function useVoiceSession() {
         }
 
         case 'conversation.item.input_audio_transcription.completed':
-          lastUserTranscriptRef.current = event.transcript as string
-          setTranscript(lastUserTranscriptRef.current)
-          addEvent('rt.transcript.user', { text: lastUserTranscriptRef.current.slice(0, 80) })
+          setTranscript(event.transcript as string)
+          addEvent('rt.transcript.user', { text: (event.transcript as string).slice(0, 80) })
           break
 
         case 'response.output_audio_transcript.done':
-          lastAssistantTranscriptRef.current = event.transcript as string
-          setAssistantText(lastAssistantTranscriptRef.current)
-          addEvent('rt.transcript.assistant', { text: lastAssistantTranscriptRef.current?.slice(0, 80) })
+          setAssistantText(event.transcript as string)
+          addEvent('rt.transcript.assistant', { text: (event.transcript as string)?.slice(0, 80) })
           break
 
         case 'error':
@@ -420,9 +383,6 @@ export function useVoiceSession() {
     setAssistantText('')
     setLastAction(null)
     setPendingTools(0)
-    lastUserTranscriptRef.current = ''
-    lastAssistantTranscriptRef.current = ''
-    confirmedPlatesRef.current.clear()
     plateMissesRef.current.clear()
     addEvent('session.stopped')
   }, [addEvent])

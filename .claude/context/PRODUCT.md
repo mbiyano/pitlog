@@ -18,11 +18,10 @@ The primary user is a mechanic working quickly at a desktop or phone. UI copy an
 ## Voice invariants
 
 - Never invent a plate, customer, date, mileage, service, or operation result.
-- Read a plate back letter by letter and digit by digit before using it in a tool. Confirm ambiguous names, and always confirm a full name before customer creation. Identifier confirmation and write confirmation are separate turns.
-- A confirmed plate miss is not enough to classify a vehicle as new: read it back and search a second time before offering creation.
-- Read operations may execute immediately after any required identifier confirmation.
-- Write operations require an explicit confirmation such as “sí”, “dale”, “guardalo”, “confirmo”, or “de una”. A request to record work is not itself confirmation.
-- In the browser-direct flow, a generic confirmation only authorizes a write when the assistant's immediately preceding turn explicitly asked to persist the summarized data.
+- Accept clear names and plates without reading them back. If one or more characters are genuinely ambiguous, ask a single targeted clarification and continue immediately after the correction.
+- One plate miss is not enough to classify a vehicle as new: repeat the same normalized lookup silently and require two misses before creation.
+- Read and write operations execute immediately when intent and required fields are clear. A clear request to record, create, add, or update data is the authorization; do not add a generic confirmation turn.
+- Tool calls should not be preceded by spoken status updates or action announcements. Ask only for a missing required field, an ambiguous exact entity, or a choice between multiple matching records.
 - Create or find the customer before creating a vehicle, and pass a real `clienteId`.
 - Report write success only when the tool returns an ID with `persistenciaVerificada: true`. Tool errors, missing verification, and partial-write warnings must be presented accurately, never reframed as a completed operation.
 - Tool names and transport payloads use Spanish domain names for compatibility with the assistant contract, even though implementation identifiers are otherwise English.
