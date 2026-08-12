@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { executeToolCall } from '../api/execute-tool-call'
 import { VOICE_GATEWAY_URL, WRITE_TOOLS } from '../config'
+import { getVoiceConnectionError, isConnectionCancellation } from '../lib/connection-error'
 import type { ConnectionState, VoiceAction, VoiceEvent } from '../types'
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ export function useVoiceSession() {
   const dcRef = useRef<RTCDataChannel | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const connectionAbortRef = useRef<AbortController | null>(null)
+  const connectionAttemptRef = useRef(0)
   const eventIdRef = useRef(0)
   const plateMissesRef = useRef(new Map<string, number>())
 
@@ -185,7 +188,7 @@ export function useVoiceSession() {
           break
 
         case 'error':
-          addEvent('rt.error', event.error)
+          addEvent('rt.error', { code: 'realtime_event_error' })
           break
 
         default:
@@ -205,14 +208,68 @@ export function useVoiceSession() {
     [addEvent, sendOnDataChannel],
   )
 
+  const releaseSessionResources = useCallback(() => {
+    dcRef.current = null
+
+    if (pcRef.current) {
+      pcRef.current.close()
+      pcRef.current = null
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+
+    if (audioRef.current) {
+      audioRef.current.srcObject = null
+    }
+  }, [])
+
+  const stopSession = useCallback(() => {
+    connectionAttemptRef.current += 1
+    connectionAbortRef.current?.abort()
+    connectionAbortRef.current = null
+    releaseSessionResources()
+
+    setConnectionState('disconnected')
+    setIsMuted(false)
+    setTranscript('')
+    setAssistantText('')
+    setLastAction(null)
+    setPendingTools(0)
+    setError(null)
+    plateMissesRef.current.clear()
+    addEvent('session.stopped')
+  }, [addEvent, releaseSessionResources])
+
   // ── Start voice session ──────────────────────────────────────────────────────
 
   const startSession = useCallback(async () => {
+    connectionAbortRef.current?.abort()
+    releaseSessionResources()
+
+    const attemptId = connectionAttemptRef.current + 1
+    connectionAttemptRef.current = attemptId
+    const abortController = new AbortController()
+    connectionAbortRef.current = abortController
+
+    const isAttemptActive = () =>
+      connectionAttemptRef.current === attemptId && !abortController.signal.aborted
+    const ensureAttemptActive = () => {
+      if (!isAttemptActive()) {
+        throw new DOMException('Voice connection cancelled', 'AbortError')
+      }
+    }
+
     setConnectionState('connecting')
+    setIsMuted(false)
     setError(null)
     setTranscript('')
     setAssistantText('')
     setLastAction(null)
+    setPendingTools(0)
+    plateMissesRef.current.clear()
     addEvent('session.start', { gateway: VOICE_GATEWAY_URL })
 
     try {
@@ -221,6 +278,7 @@ export function useVoiceSession() {
       addEvent('token.requesting')
       const tokenPromise = fetch(`${VOICE_GATEWAY_URL}/api/realtime/token`, {
         method: 'POST',
+        signal: abortController.signal,
       }).then(async (res) => {
         if (!res.ok) {
           const text = await res.text()
@@ -228,9 +286,16 @@ export function useVoiceSession() {
         }
         return res.json() as Promise<{ sessionId: string; token: string; model: string }>
       })
-      const microphonePromise = navigator.mediaDevices.getUserMedia({ audio: true })
+      const microphonePromise = navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        if (!isAttemptActive()) {
+          stream.getTracks().forEach((track) => track.stop())
+          throw new DOMException('Voice connection cancelled', 'AbortError')
+        }
+        return stream
+      })
 
       const [stream, tokenData] = await Promise.all([microphonePromise, tokenPromise])
+      ensureAttemptActive()
       streamRef.current = stream
       addEvent('mic.acquired')
       addEvent('token.received', { sessionId: tokenData.sessionId })
@@ -238,12 +303,14 @@ export function useVoiceSession() {
       // Create peer connection — no iceServers needed, OpenAI handles connectivity
       const pc = new RTCPeerConnection()
       pcRef.current = pc
+      ensureAttemptActive()
 
       // Add audio track
       stream.getTracks().forEach((track) => pc.addTrack(track, stream))
 
       // Handle remote audio
       pc.ontrack = (event) => {
+        if (!isAttemptActive()) return
         addEvent('track.received', { kind: event.track.kind })
         if (audioRef.current && event.streams[0]) {
           audioRef.current.srcObject = event.streams[0]
@@ -251,6 +318,7 @@ export function useVoiceSession() {
       }
 
       pc.oniceconnectionstatechange = () => {
+        if (!isAttemptActive()) return
         addEvent('ice.state', { state: pc.iceConnectionState })
         if (pc.iceConnectionState === 'connected') {
           setConnectionState('connected')
@@ -259,7 +327,7 @@ export function useVoiceSession() {
           pc.iceConnectionState === 'disconnected'
         ) {
           setConnectionState('error')
-          setError('La conexión WebRTC se perdió')
+          setError('Se perdió la conexión con el asistente. Podés volver a intentarlo.')
         }
       }
 
@@ -270,10 +338,12 @@ export function useVoiceSession() {
       dcRef.current = dc
 
       dc.onopen = () => {
+        if (!isAttemptActive()) return
         addEvent('dc.opened', { label: dc.label })
       }
 
       dc.onmessage = (msg) => {
+        if (!isAttemptActive()) return
         try {
           const parsed = JSON.parse(msg.data)
           void handleRealtimeEvent(parsed)
@@ -283,12 +353,14 @@ export function useVoiceSession() {
       }
 
       dc.onclose = () => {
+        if (!isAttemptActive()) return
         addEvent('dc.closed', { label: dc.label })
         dcRef.current = null
       }
 
       // Also handle any server-created data channels (fallback)
       pc.ondatachannel = (event) => {
+        if (!isAttemptActive()) return
         const serverDc = event.channel
         addEvent('dc.server', { label: serverDc.label })
         // If OpenAI creates its own channel, use it too
@@ -296,6 +368,7 @@ export function useVoiceSession() {
           dcRef.current = serverDc
         }
         serverDc.onmessage = (msg) => {
+          if (!isAttemptActive()) return
           try {
             const parsed = JSON.parse(msg.data)
             void handleRealtimeEvent(parsed)
@@ -307,35 +380,44 @@ export function useVoiceSession() {
 
       // Create SDP offer and start ICE gathering
       const offer = await pc.createOffer()
+      ensureAttemptActive()
       await pc.setLocalDescription(offer)
+      ensureAttemptActive()
       addEvent('sdp.offer.created')
 
       // Wait only for the first usable ICE candidate (or completion), instead
       // of delaying every connection for a full ICE-gathering cycle.
-      await new Promise<void>((resolve) => {
-        if (pc.iceGatheringState === 'complete') {
-          resolve()
-          return
-        }
-        const timeout = setTimeout(() => {
-          addEvent('ice.timeout', { state: pc.iceGatheringState })
-          pc.removeEventListener('icecandidate', handleCandidate)
-          resolve()
-        }, 300)
-        const handleCandidate = (event: RTCPeerConnectionIceEvent) => {
-          if (event.candidate || pc.iceGatheringState === 'complete') {
+      if (pc.iceGatheringState !== 'complete') {
+        await new Promise<void>((resolve) => {
+          let settled = false
+
+          const finish = () => {
+            if (settled) return
+            settled = true
             clearTimeout(timeout)
             pc.removeEventListener('icecandidate', handleCandidate)
+            abortController.signal.removeEventListener('abort', finish)
             resolve()
           }
-        }
-        pc.addEventListener('icecandidate', handleCandidate)
-      })
+          const handleCandidate = (event: RTCPeerConnectionIceEvent) => {
+            if (event.candidate || pc.iceGatheringState === 'complete') finish()
+          }
+
+          const timeout = setTimeout(() => {
+            if (isAttemptActive()) addEvent('ice.timeout', { state: pc.iceGatheringState })
+            finish()
+          }, 300)
+          pc.addEventListener('icecandidate', handleCandidate)
+          abortController.signal.addEventListener('abort', finish, { once: true })
+        })
+      }
+      ensureAttemptActive()
 
       // ── Send SDP directly to OpenAI using the ephemeral token ───────────
       addEvent('sdp.offer.sending', { direct: true })
       const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
         method: 'POST',
+        signal: abortController.signal,
         headers: {
           Authorization: `Bearer ${tokenData.token}`,
           'Content-Type': 'application/sdp',
@@ -349,43 +431,29 @@ export function useVoiceSession() {
       }
 
       const answerSdp = await sdpResponse.text()
+      ensureAttemptActive()
       addEvent('sdp.answer.received')
 
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+      ensureAttemptActive()
 
       addEvent('session.established')
       setConnectionState('connected')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido'
-      setError(message)
-      setConnectionState('error')
-      addEvent('error', { message })
-      stopSession()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addEvent, handleRealtimeEvent])
+      if (!isAttemptActive() || isConnectionCancellation(err)) return
 
-  const stopSession = useCallback(() => {
-    dcRef.current = null
-    if (pcRef.current) {
-      pcRef.current.close()
-      pcRef.current = null
+      abortController.abort()
+      releaseSessionResources()
+      const failure = getVoiceConnectionError(err)
+      setError(failure.message)
+      setConnectionState('error')
+      addEvent('session.error', { code: failure.code })
+    } finally {
+      if (connectionAbortRef.current === abortController) {
+        connectionAbortRef.current = null
+      }
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
-    }
-    if (audioRef.current) {
-      audioRef.current.srcObject = null
-    }
-    setConnectionState('disconnected')
-    setTranscript('')
-    setAssistantText('')
-    setLastAction(null)
-    setPendingTools(0)
-    plateMissesRef.current.clear()
-    addEvent('session.stopped')
-  }, [addEvent])
+  }, [addEvent, handleRealtimeEvent, releaseSessionResources])
 
   const toggleMute = useCallback(() => {
     if (streamRef.current) {
@@ -401,10 +469,12 @@ export function useVoiceSession() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pcRef.current) pcRef.current.close()
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop())
+      connectionAttemptRef.current += 1
+      connectionAbortRef.current?.abort()
+      connectionAbortRef.current = null
+      releaseSessionResources()
     }
-  }, [])
+  }, [releaseSessionResources])
 
   const clearEvents = useCallback(() => setEvents([]), [])
 

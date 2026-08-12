@@ -58,6 +58,7 @@ In production, `NODE_ENV` must be `production`, `USE_MOCK_MCP` must be `false`, 
 ## Change recipes
 
 Frontend UX work must follow `browser-app/docs/UX_SYSTEM.md`. Reuse semantic tokens and existing UI/shared primitives before introducing one-off colors or interaction patterns. Update that document when a change establishes or modifies a reusable visual, accessibility, form, navigation, feedback, or responsive rule.
+Async UI cancellation must invalidate stale continuations and release acquired resources. Treat user cancellation as an expected state transition, not an error, and never pass raw exception messages into customer-facing components.
 
 When changing a database record:
 

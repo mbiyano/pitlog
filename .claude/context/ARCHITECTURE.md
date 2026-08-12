@@ -32,6 +32,8 @@ The repository contains two deployables, not a package workspace. The root `pack
 7. The browser posts the tool to the same-origin authenticated `/api/voice/tool-call` route.
 8. That route invokes `features/voice/server/mcp-methods.ts` directly. Writes are read back from Supabase and only return `persistenciaVerificada: true` after the row is found; the browser rejects any unverified write result before returning it to the model.
 
+Connection attempts are generation-scoped and abortable. Cancelling invalidates the active generation, aborts token and SDP requests, closes WebRTC/media resources, and produces no error state. Unexpected browser, gateway, or provider failures are mapped to curated user messages; raw exception text is never included in alerts or the visible diagnostic journal.
+
 `POST /api/realtime/session` remains as a legacy gateway-relayed SDP flow. The sideband controller is used by that path and applies the same immediate execution, validation, and persistence-verification policy. Do not assume the sideband is active in the browser-direct token flow.
 
 The default voice model is `gpt-realtime-2.1`. The shared session config uses the current nested `audio` contract, Spanish transcription context for names and Argentine plates, and audio output transcripts from `response.output_audio_transcript.done`.

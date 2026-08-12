@@ -66,6 +66,7 @@ PitLog currently defaults to dark mode, but both light and dark token sets must 
 
 - Inline `Alert` is for feedback needed to finish the current task.
 - Toasts confirm background or completed actions and must include a useful description on errors.
+- Never expose raw exceptions, stack traces, browser API messages, or provider payloads in customer-facing feedback. Translate failures into concise next-step copy; expected cancellation is silent and clears stale errors.
 - Status badges use singular labels for individual records and semantic tokens.
 - Search must expose loading, error, empty, and results states. Debounce remote search by roughly 250–350 ms and ignore stale responses.
 
