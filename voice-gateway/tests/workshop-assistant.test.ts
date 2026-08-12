@@ -24,8 +24,18 @@ describe('Workshop assistant instructions', () => {
     expect(SYSTEM_INSTRUCTIONS).toContain('No pude verificar que se haya guardado');
   });
 
-  it('uses a neutral tone without encouraging workshop slang', () => {
-    expect(SYSTEM_INSTRUCTIONS).toContain('evitá modismos regionales, lunfardo y muletillas');
-    expect(SYSTEM_INSTRUCTIONS).not.toContain('como un pibe que labura');
+  it('uses natural Argentine voseo without slang or exaggerated enthusiasm', () => {
+    expect(SYSTEM_INSTRUCTIONS).toContain('español rioplatense argentino natural y usá voseo');
+    expect(SYSTEM_INSTRUCTIONS).toContain('argentino sin caricaturizar');
+    expect(SYSTEM_INSTRUCTIONS).toContain('Evitá lunfardo, muletillas y modismos marcados');
+    expect(SYSTEM_INSTRUCTIONS).toContain('No exageres el entusiasmo');
+    expect(SYSTEM_INSTRUCTIONS).toContain('Variá las aperturas breves');
+  });
+
+  it('provides restrained examples for routine responses', () => {
+    expect(SYSTEM_INSTRUCTIONS).toContain('Quedó guardado');
+    expect(SYSTEM_INSTRUCTIONS).toContain('No encontré esa patente');
+    expect(SYSTEM_INSTRUCTIONS).toContain('¿Me repetís esa letra?');
+    expect(SYSTEM_INSTRUCTIONS).toContain('¡Buenísimo!');
   });
 });

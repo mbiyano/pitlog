@@ -4,7 +4,7 @@
 
 PitLog is a workshop-management application for mechanics in Argentina. It records customers, vehicles, workshop visits, work items, mileage, and future-service reminders through forms or a Realtime voice assistant.
 
-The primary user is a mechanic working quickly at a desktop or phone. UI copy and assistant speech should be concise, practical, neutral Rioplatense Spanish. Natural voseo is allowed, but avoid slang, lunfardo, and regional filler phrases.
+The primary user is a mechanic working quickly at a desktop or phone. UI copy and assistant speech should be concise and practical. The voice assistant uses natural Argentine Rioplatense Spanish and voseo, with a warm, calm, matter-of-fact tone. Avoid caricatured regional speech, slang, lunfardo, filler phrases, and exaggerated enthusiasm for routine operations.
 
 ## Core domain
 
